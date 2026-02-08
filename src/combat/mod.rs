@@ -1,9 +1,16 @@
+pub mod collision;
+
 use bevy::prelude::*;
+
+use crate::states::GameState;
 
 pub struct CombatPlugin;
 
 impl Plugin for CombatPlugin {
-    fn build(&self, _app: &mut App) {
-        // Phase 2: collision detection, damage, effects
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            FixedUpdate,
+            collision::food_player_collision_system.run_if(in_state(GameState::Playing)),
+        );
     }
 }

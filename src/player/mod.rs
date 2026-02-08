@@ -5,7 +5,8 @@ pub mod movement;
 
 use bevy::prelude::*;
 
-use crate::states::GameState;
+use crate::food::components::Inventory;
+use crate::states::{GameState, Gameplay};
 use components::*;
 
 pub struct PlayerPlugin;
@@ -44,6 +45,8 @@ fn spawn_players(mut commands: Commands) {
         Velocity(Vec2::ZERO),
         Score(0),
         InputScheme::KeyboardMouse,
+        Inventory { held_food: None },
+        Gameplay,
     ));
 
     // Player 2: Red, Arrow key controls, spawns right side
@@ -62,5 +65,7 @@ fn spawn_players(mut commands: Commands) {
         Velocity(Vec2::ZERO),
         Score(0),
         InputScheme::ArrowKeys,
+        Inventory { held_food: None },
+        Gameplay,
     ));
 }

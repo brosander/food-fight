@@ -1,13 +1,21 @@
 use bevy::prelude::*;
 
+use crate::npc::components::Caught;
+
 use super::components::{InputScheme, Player, Velocity};
 
 /// Reads input and sets player velocity based on their input scheme.
+/// Stunned players can't move.
 pub fn input_system(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&Player, &InputScheme, &mut Velocity)>,
+    mut query: Query<(&Player, &InputScheme, &mut Velocity, Option<&Caught>)>,
 ) {
-    for (player, scheme, mut velocity) in &mut query {
+    for (player, scheme, mut velocity, caught) in &mut query {
+        // Stunned players can't move
+        if caught.is_some() {
+            velocity.0 = Vec2::ZERO;
+            continue;
+        }
         let mut direction = Vec2::ZERO;
 
         match scheme {

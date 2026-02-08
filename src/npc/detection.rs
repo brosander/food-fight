@@ -1,0 +1,140 @@
+use bevy::prelude::*;
+
+use super::components::*;
+use crate::food::components::InFlight;
+use crate::food::launcher::EquippedLauncher;
+use crate::player::components::Player;
+
+/// Marks players as Suspicious when they throw food, fire a launcher,
+/// or are holding a weapon.
+pub fn suspicion_system(
+    mut commands: Commands,
+    players: Query<(Entity, Option<&EquippedLauncher>), With<Player>>,
+    projectiles: Query<&InFlight>,
+) {
+    for (player_entity, launcher) in &players {
+        let has_launcher = launcher.is_some();
+        let recently_threw = projectiles
+            .iter()
+            .any(|flight| flight.thrown_by == player_entity);
+
+        if has_launcher || recently_threw {
+            commands.entity(player_entity).insert(Suspicious);
+        } else {
+            commands.entity(player_entity).remove::<Suspicious>();
+        }
+    }
+}
+
+/// Detection cone check: sees if a Suspicious player is within NPC's FOV.
+pub fn detection_system(
+    time: Res<Time>,
+    mut npcs: Query<(&NpcAuthority, &mut NpcState, &Transform, &Facing, &PatrolPath)>,
+    players: Query<(Entity, &Transform), (With<Player>, With<Suspicious>)>,
+) {
+    for (npc, mut state, npc_tf, facing, path) in &mut npcs {
+        match state.as_mut() {
+            NpcState::Patrolling { .. } => {
+                // Look for suspicious players in detection cone
+                if let Some((target, pos)) = find_visible_target(
+                    npc_tf.translation.truncate(),
+                    facing.0,
+                    npc.detection_radius,
+                    npc.detection_angle,
+                    &players,
+                ) {
+                    *state = NpcState::Suspicious {
+                        last_seen: pos,
+                        timer: Timer::from_seconds(2.0, TimerMode::Once),
+                    };
+                }
+            }
+            NpcState::Suspicious {
+                ref last_seen,
+                ref mut timer,
+            } => {
+                timer.tick(time.delta());
+
+                // Check if we can still see a suspicious player
+                if let Some((target, pos)) = find_visible_target(
+                    npc_tf.translation.truncate(),
+                    facing.0,
+                    npc.detection_radius,
+                    npc.detection_angle * 1.5, // Wider cone when suspicious
+                    &players,
+                ) {
+                    *state = NpcState::Chasing { target };
+                } else if timer.finished() {
+                    // Lost sight, return to patrol
+                    let nearest = nearest_waypoint(npc_tf.translation.truncate(), path);
+                    *state = NpcState::Returning {
+                        waypoint_index: nearest,
+                    };
+                }
+            }
+            NpcState::Chasing { target } => {
+                // Check if we can still see the target (wider radius)
+                let can_see = players.get(*target).map_or(false, |(_, player_tf)| {
+                    let dist = npc_tf
+                        .translation
+                        .truncate()
+                        .distance(player_tf.translation.truncate());
+                    dist < npc.detection_radius * 1.5
+                });
+
+                if !can_see {
+                    let nearest = nearest_waypoint(npc_tf.translation.truncate(), path);
+                    *state = NpcState::Returning {
+                        waypoint_index: nearest,
+                    };
+                }
+            }
+            NpcState::Returning { .. } => {}
+        }
+    }
+}
+
+fn find_visible_target(
+    npc_pos: Vec2,
+    npc_facing: Vec2,
+    radius: f32,
+    half_angle: f32,
+    players: &Query<(Entity, &Transform), (With<Player>, With<Suspicious>)>,
+) -> Option<(Entity, Vec2)> {
+    let mut closest: Option<(Entity, Vec2, f32)> = None;
+
+    for (entity, player_tf) in players {
+        let player_pos = player_tf.translation.truncate();
+        let to_player = player_pos - npc_pos;
+        let dist = to_player.length();
+
+        if dist > radius {
+            continue;
+        }
+
+        // Cone check: angle between facing direction and direction to player
+        let angle = npc_facing.angle_to(to_player.normalize()).abs();
+        if angle > half_angle {
+            continue;
+        }
+
+        if closest.is_none() || dist < closest.as_ref().unwrap().2 {
+            closest = Some((entity, player_pos, dist));
+        }
+    }
+
+    closest.map(|(e, p, _)| (e, p))
+}
+
+fn nearest_waypoint(pos: Vec2, path: &PatrolPath) -> usize {
+    path.waypoints
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| {
+            a.distance(pos)
+                .partial_cmp(&b.distance(pos))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(i, _)| i)
+        .unwrap_or(0)
+}

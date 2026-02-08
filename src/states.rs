@@ -10,3 +10,7 @@ pub enum GameState {
     Paused,
     RoundOver,
 }
+
+/// Marker component for entities that should be despawned when leaving gameplay.
+#[derive(Component)]
+pub struct Gameplay;
