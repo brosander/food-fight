@@ -1,0 +1,15 @@
+/target
+
+# Steam dev app ID — create locally with value 480 for testing without Steam
+steam_appid.txt
+
+# Logs
+*.log
+
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
+# IDE
+.vscode/
+.idea/
