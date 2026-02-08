@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::food::components::Inventory;
 use crate::food::launcher::EquippedLauncher;
+use crate::lobby::Lobby;
 use crate::npc::components::Caught;
 use crate::player::components::{Health, Player};
 
@@ -23,7 +24,7 @@ pub struct PlayerStatusText {
     pub player_id: u8,
 }
 
-pub fn setup_hud(mut commands: Commands) {
+pub fn setup_hud(mut commands: Commands, lobby: Res<Lobby>) {
     commands
         .spawn((
             Node {
@@ -37,7 +38,7 @@ pub fn setup_hud(mut commands: Commands) {
             HudRoot,
         ))
         .with_children(|parent| {
-            // Top bar: both players' health
+            // Top bar: all players' health
             parent
                 .spawn(Node {
                     width: Val::Percent(100.0),
@@ -45,10 +46,9 @@ pub fn setup_hud(mut commands: Commands) {
                     ..default()
                 })
                 .with_children(|top| {
-                    // Player 1 HUD (left)
-                    spawn_player_hud(top, 1, Color::srgb(0.2, 0.4, 0.9));
-                    // Player 2 HUD (right)
-                    spawn_player_hud(top, 2, Color::srgb(0.9, 0.2, 0.2));
+                    for slot in &lobby.slots {
+                        spawn_player_hud(top, slot.player_id + 1, slot.color);
+                    }
                 });
         });
 }
@@ -61,7 +61,6 @@ fn spawn_player_hud(parent: &mut ChildBuilder, player_id: u8, color: Color) {
             ..default()
         })
         .with_children(|col| {
-            // Player label
             col.spawn((
                 Text::new(format!("Player {}", player_id)),
                 TextFont {
@@ -71,7 +70,6 @@ fn spawn_player_hud(parent: &mut ChildBuilder, player_id: u8, color: Color) {
                 TextColor(color),
             ));
 
-            // Health bar background
             col.spawn((
                 Node {
                     width: Val::Px(150.0),
@@ -82,7 +80,6 @@ fn spawn_player_hud(parent: &mut ChildBuilder, player_id: u8, color: Color) {
                 HealthBar { player_id },
             ))
             .with_children(|bar| {
-                // Health bar fill
                 bar.spawn((
                     Node {
                         width: Val::Percent(100.0),
@@ -94,7 +91,6 @@ fn spawn_player_hud(parent: &mut ChildBuilder, player_id: u8, color: Color) {
                 ));
             });
 
-            // Status text (held item, stunned, etc.)
             col.spawn((
                 Text::new(""),
                 TextFont {
@@ -113,7 +109,6 @@ pub fn update_hud(
     mut status_texts: Query<(&PlayerStatusText, &mut Text)>,
 ) {
     for (player, health, inventory, launcher, caught) in &players {
-        // Update health bar
         let health_pct = (health.0 / 100.0 * 100.0).clamp(0.0, 100.0);
         for (fill, mut node) in &mut health_fills {
             if fill.player_id == player.id {
@@ -121,7 +116,6 @@ pub fn update_hud(
             }
         }
 
-        // Update status text
         let mut status = String::new();
         if caught.is_some() {
             status.push_str("STUNNED! ");

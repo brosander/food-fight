@@ -1,30 +1,29 @@
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 
 use super::components::*;
-use crate::player::components::{InputScheme, Velocity as PlayerVelocity};
+use crate::controller::read_aim_direction;
+use crate::player::components::GamepadLink;
 use crate::states::Gameplay;
 
 const PICKUP_RANGE: f32 = 40.0;
 
-/// Pickup system: when player presses pickup key near a Throwable food, add it to inventory.
+/// Pickup system: when player presses South (A/Cross) near a Throwable food, add it to inventory.
 pub fn pickup_system(
     mut commands: Commands,
-    keyboard: Res<ButtonInput<KeyCode>>,
-    players: Query<(Entity, &Transform, &InputScheme, &Inventory)>,
+    gamepads: Query<&Gamepad>,
+    players: Query<(Entity, &Transform, &GamepadLink, &Inventory)>,
     food_items: Query<(Entity, &Transform, &FoodItem), With<Throwable>>,
 ) {
-    for (player_entity, player_tf, scheme, inventory) in &players {
+    for (player_entity, player_tf, link, inventory) in &players {
         if inventory.held_food.is_some() {
             continue;
         }
 
-        let pickup_pressed = match scheme {
-            InputScheme::KeyboardMouse => keyboard.just_pressed(KeyCode::KeyE),
-            InputScheme::ArrowKeys => keyboard.just_pressed(KeyCode::ShiftRight),
+        let Ok(gamepad) = gamepads.get(link.0) else {
+            continue;
         };
 
-        if !pickup_pressed {
+        if !gamepad.just_pressed(GamepadButton::South) {
             continue;
         }
 
@@ -51,74 +50,27 @@ pub fn pickup_system(
     }
 }
 
-/// Aim system: computes aim direction for each player.
-/// P1 aims toward mouse. P2 aims in the direction of last movement.
+/// Throw system: Right trigger to throw, right stick (or left stick fallback) to aim.
 pub fn throw_system(
     mut commands: Commands,
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mouse_buttons: Res<ButtonInput<MouseButton>>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    camera_q: Query<(&Camera, &GlobalTransform)>,
-    players: Query<(Entity, &Transform, &InputScheme, &Inventory, &PlayerVelocity)>,
+    gamepads: Query<&Gamepad>,
+    players: Query<(Entity, &Transform, &GamepadLink, &Inventory)>,
 ) {
-    let Ok(window) = windows.get_single() else {
-        return;
-    };
-    let Ok((camera, camera_transform)) = camera_q.get_single() else {
-        return;
-    };
-
-    for (player_entity, player_tf, scheme, inventory, player_vel) in &players {
+    for (player_entity, player_tf, link, inventory) in &players {
         let Some(food_type) = &inventory.held_food else {
             continue;
         };
 
-        let (should_throw, aim_direction) = match scheme {
-            InputScheme::KeyboardMouse => {
-                let throw = mouse_buttons.just_pressed(MouseButton::Left);
-                let dir = if let Some(cursor_pos) = window.cursor_position() {
-                    if let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos)
-                    {
-                        (world_pos - player_tf.translation.truncate()).normalize_or_zero()
-                    } else {
-                        Vec2::Y
-                    }
-                } else {
-                    Vec2::Y
-                };
-                (throw, dir)
-            }
-            InputScheme::ArrowKeys => {
-                let throw = keyboard.just_pressed(KeyCode::Enter);
-                // Aim in last movement direction, or default to up
-                let dir = if player_vel.0.length_squared() > 0.01 {
-                    player_vel.0.normalize()
-                } else {
-                    // Use arrow keys for aiming when stationary
-                    let mut aim = Vec2::ZERO;
-                    if keyboard.pressed(KeyCode::ArrowUp) {
-                        aim.y += 1.0;
-                    }
-                    if keyboard.pressed(KeyCode::ArrowDown) {
-                        aim.y -= 1.0;
-                    }
-                    if keyboard.pressed(KeyCode::ArrowLeft) {
-                        aim.x -= 1.0;
-                    }
-                    if keyboard.pressed(KeyCode::ArrowRight) {
-                        aim.x += 1.0;
-                    }
-                    if aim == Vec2::ZERO {
-                        Vec2::Y
-                    } else {
-                        aim.normalize()
-                    }
-                };
-                (throw, dir)
-            }
+        let Ok(gamepad) = gamepads.get(link.0) else {
+            continue;
         };
 
-        if !should_throw || aim_direction == Vec2::ZERO {
+        if !gamepad.just_pressed(GamepadButton::RightTrigger2) {
+            continue;
+        }
+
+        let aim_direction = read_aim_direction(gamepad);
+        if aim_direction == Vec2::ZERO {
             continue;
         }
 

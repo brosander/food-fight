@@ -3,6 +3,7 @@ pub mod scoreboard;
 
 use bevy::prelude::*;
 
+use crate::lobby::Lobby;
 use crate::states::{GameState, Gameplay};
 
 pub struct UiPlugin;
@@ -41,7 +42,7 @@ impl Plugin for UiPlugin {
                 scoreboard::round_over_system.run_if(in_state(GameState::RoundOver)),
             )
             // Cleanup gameplay when returning to main menu
-            .add_systems(OnEnter(GameState::MainMenu), cleanup_gameplay);
+            .add_systems(OnEnter(GameState::MainMenu), (cleanup_gameplay, cleanup_lobby));
     }
 }
 
@@ -75,7 +76,7 @@ fn setup_main_menu(mut commands: Commands) {
             ));
 
             parent.spawn((
-                Text::new("Press SPACE to start"),
+                Text::new("Press START or SPACE"),
                 TextFont {
                     font_size: 24.0,
                     ..default()
@@ -84,9 +85,7 @@ fn setup_main_menu(mut commands: Commands) {
             ));
 
             parent.spawn((
-                Text::new(
-                    "P1: WASD + Mouse | E=Pickup food | Q=Pickup launcher | Click=Throw/Fire",
-                ),
+                Text::new("Left Stick = Move | Right Stick = Aim"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
@@ -95,9 +94,7 @@ fn setup_main_menu(mut commands: Commands) {
             ));
 
             parent.spawn((
-                Text::new(
-                    "P2: Arrows | RShift=Pickup food | RCtrl=Pickup launcher | Enter=Throw/Fire",
-                ),
+                Text::new("[A] = Pickup food | [X] = Pickup launcher | RT = Throw/Fire"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
@@ -109,15 +106,25 @@ fn setup_main_menu(mut commands: Commands) {
 
 fn main_menu_system(
     keyboard: Res<ButtonInput<KeyCode>>,
+    gamepads: Query<&Gamepad>,
     mut next_state: ResMut<NextState<GameState>>,
     menu_query: Query<Entity, With<MainMenuUi>>,
     mut commands: Commands,
 ) {
-    if keyboard.just_pressed(KeyCode::Space) {
+    let mut go = keyboard.just_pressed(KeyCode::Space);
+    if !go {
+        for gamepad in &gamepads {
+            if gamepad.just_pressed(GamepadButton::Start) {
+                go = true;
+                break;
+            }
+        }
+    }
+    if go {
         for entity in &menu_query {
             commands.entity(entity).despawn_recursive();
         }
-        next_state.set(GameState::Playing);
+        next_state.set(GameState::Lobby);
     }
 }
 
@@ -128,19 +135,35 @@ struct PauseUi;
 
 fn pause_system(
     keyboard: Res<ButtonInput<KeyCode>>,
+    gamepads: Query<&Gamepad>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if keyboard.just_pressed(KeyCode::Escape) {
         next_state.set(GameState::Paused);
+        return;
+    }
+    for gamepad in &gamepads {
+        if gamepad.just_pressed(GamepadButton::Start) {
+            next_state.set(GameState::Paused);
+            return;
+        }
     }
 }
 
 fn unpause_system(
     keyboard: Res<ButtonInput<KeyCode>>,
+    gamepads: Query<&Gamepad>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if keyboard.just_pressed(KeyCode::Escape) || keyboard.just_pressed(KeyCode::Space) {
         next_state.set(GameState::Playing);
+        return;
+    }
+    for gamepad in &gamepads {
+        if gamepad.just_pressed(GamepadButton::Start) {
+            next_state.set(GameState::Playing);
+            return;
+        }
     }
 }
 
@@ -169,7 +192,7 @@ fn setup_pause_menu(mut commands: Commands) {
                 TextColor(Color::srgb(1.0, 1.0, 1.0)),
             ));
             parent.spawn((
-                Text::new("Press ESC or SPACE to resume"),
+                Text::new("Press START to resume"),
                 TextFont {
                     font_size: 20.0,
                     ..default()
@@ -203,4 +226,9 @@ fn cleanup_gameplay(
     for entity in &round_over_query {
         commands.entity(entity).despawn_recursive();
     }
+}
+
+/// Clear the lobby when returning to main menu.
+fn cleanup_lobby(mut lobby: ResMut<Lobby>) {
+    lobby.slots.clear();
 }

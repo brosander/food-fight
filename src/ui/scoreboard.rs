@@ -11,7 +11,7 @@ pub fn win_check_system(
     mut next_state: ResMut<NextState<GameState>>,
     players: Query<(&Player, &Health)>,
 ) {
-    for (player, health) in &players {
+    for (_player, health) in &players {
         if health.0 <= 0.0 {
             next_state.set(GameState::RoundOver);
             return;
@@ -20,7 +20,6 @@ pub fn win_check_system(
 }
 
 pub fn setup_round_over(mut commands: Commands, players: Query<(&Player, &Health)>) {
-    // Determine winner
     let mut winner_id = 0u8;
     let mut max_health = -1.0f32;
     for (player, health) in &players {
@@ -55,7 +54,7 @@ pub fn setup_round_over(mut commands: Commands, players: Query<(&Player, &Health
             ));
 
             parent.spawn((
-                Text::new("Press SPACE to return to menu"),
+                Text::new("Press START to return to menu"),
                 TextFont {
                     font_size: 20.0,
                     ..default()
@@ -68,10 +67,20 @@ pub fn setup_round_over(mut commands: Commands, players: Query<(&Player, &Health
 pub fn round_over_system(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
+    gamepads: Query<&Gamepad>,
     mut next_state: ResMut<NextState<GameState>>,
     ui_query: Query<Entity, With<RoundOverUi>>,
 ) {
-    if keyboard.just_pressed(KeyCode::Space) {
+    let mut go = keyboard.just_pressed(KeyCode::Space);
+    if !go {
+        for gamepad in &gamepads {
+            if gamepad.just_pressed(GamepadButton::Start) {
+                go = true;
+                break;
+            }
+        }
+    }
+    if go {
         for entity in &ui_query {
             commands.entity(entity).despawn_recursive();
         }

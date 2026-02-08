@@ -15,11 +15,6 @@ pub struct Velocity(pub Vec2);
 #[derive(Component)]
 pub struct Score(pub i32);
 
-/// Tracks which input scheme this player uses.
+/// Links this player to a specific gamepad entity for input.
 #[derive(Component)]
-pub enum InputScheme {
-    /// WASD + mouse aim
-    KeyboardMouse,
-    /// Arrow keys + right shift to throw (for local 2P)
-    ArrowKeys,
-}
+pub struct GamepadLink(pub Entity);
