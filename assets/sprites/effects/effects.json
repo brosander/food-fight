@@ -1,0 +1,30 @@
+{
+  "texture": "sprites/effects/effects.png",
+  "tile_size": [32, 32],
+  "columns": 6,
+  "rows": 3,
+  "total_frames": 18,
+  "animations": {
+    "hit_flash": {
+      "row": 0,
+      "frames": [0, 1, 2, 3, 4, 5],
+      "fps": 15,
+      "loop": false,
+      "description": "Impact flash when food hits a player"
+    }
+  },
+  "static_frames": {
+    "splat_red":    { "row": 1, "col": 0, "description": "Pizza/spaghetti/meatball sauce splat" },
+    "splat_green":  { "row": 1, "col": 1, "description": "Jello splat" },
+    "splat_purple": { "row": 1, "col": 2, "description": "Grape juice splat" },
+    "splat_white":  { "row": 1, "col": 3, "description": "Milk splat" },
+    "splat_yellow": { "row": 1, "col": 4, "description": "Banana/general splat" },
+    "splat_brown":  { "row": 1, "col": 5, "description": "Mystery meat splat" },
+    "pickup_sparkle":     { "row": 2, "col": 0 },
+    "question_mark":      { "row": 2, "col": 1, "description": "NPC suspicious indicator" },
+    "exclamation_mark":   { "row": 2, "col": 2, "description": "NPC alert/chase indicator" },
+    "dizzy_stars":        { "row": 2, "col": 3, "description": "Player stunned indicator" },
+    "speed_lines":        { "row": 2, "col": 4, "description": "NPC chasing effect" },
+    "shield_bubble":      { "row": 2, "col": 5, "description": "Immunity bubble (future)" }
+  }
+}

@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::food::components::*;
 use crate::player::components::{Health, Player};
+use crate::sprites::{AnimationState, FrameRange, SpriteAssets, effects_atlas_index};
 use crate::states::Gameplay;
 
 const PLAYER_HALF_SIZE: f32 = 16.0;
@@ -12,6 +13,7 @@ pub fn food_player_collision_system(
     mut commands: Commands,
     projectiles: Query<(Entity, &Transform, &InFlight)>,
     mut players: Query<(Entity, &Transform, &mut Health), With<Player>>,
+    sprite_assets: Res<SpriteAssets>,
 ) {
     for (proj_entity, proj_tf, flight) in &projectiles {
         let proj_pos = proj_tf.translation.truncate();
@@ -35,10 +37,15 @@ pub fn food_player_collision_system(
                 // Apply damage
                 health.0 = (health.0 - flight.damage).max(0.0);
 
-                // Spawn hit splat
+                // Spawn hit flash animation
+                let hit_start = effects_atlas_index(0, 0);
                 commands.spawn((
                     Sprite {
-                        color: Color::srgba(1.0, 1.0, 1.0, 0.8),
+                        image: sprite_assets.effects_image.clone(),
+                        texture_atlas: Some(TextureAtlas {
+                            layout: sprite_assets.effects_layout.clone(),
+                            index: hit_start,
+                        }),
                         custom_size: Some(Vec2::new(24.0, 24.0)),
                         ..default()
                     },
@@ -47,8 +54,17 @@ pub fn food_player_collision_system(
                         player_tf.translation.y,
                         3.0,
                     ),
+                    AnimationState::new(
+                        "hit_flash",
+                        FrameRange {
+                            start: effects_atlas_index(0, 0),
+                            end: effects_atlas_index(0, 5),
+                            fps: 15.0,
+                            looping: false,
+                        },
+                    ),
                     SplatEffect {
-                        lifetime: Timer::from_seconds(0.3, TimerMode::Once),
+                        lifetime: Timer::from_seconds(0.4, TimerMode::Once),
                     },
                     Gameplay,
                 ));

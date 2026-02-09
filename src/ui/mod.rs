@@ -4,7 +4,7 @@ pub mod scoreboard;
 use bevy::prelude::*;
 
 use crate::lobby::Lobby;
-use crate::states::{GameState, Gameplay};
+use crate::states::{GameSessionActive, GameState, Gameplay};
 
 pub struct UiPlugin;
 
@@ -18,7 +18,10 @@ impl Plugin for UiPlugin {
                 main_menu_system.run_if(in_state(GameState::MainMenu)),
             )
             // Playing: HUD + win check + pause
-            .add_systems(OnEnter(GameState::Playing), hud::setup_hud)
+            .add_systems(
+                OnEnter(GameState::Playing),
+                hud::setup_hud.run_if(not(resource_exists::<GameSessionActive>)),
+            )
             .add_systems(
                 Update,
                 (
@@ -226,6 +229,7 @@ fn cleanup_gameplay(
     for entity in &round_over_query {
         commands.entity(entity).despawn_recursive();
     }
+    commands.remove_resource::<GameSessionActive>();
 }
 
 /// Clear the lobby when returning to main menu.

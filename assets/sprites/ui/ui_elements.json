@@ -1,0 +1,61 @@
+{
+  "texture": "sprites/ui/ui_elements.png",
+  "tile_size": [32, 32],
+  "columns": 8,
+  "rows": 4,
+  "total_frames": 32,
+  "icons": {
+    "food_icons": {
+      "row": 0,
+      "items": {
+        "pizza":        { "col": 0 },
+        "meatball":     { "col": 1 },
+        "jello":        { "col": 2 },
+        "grape":        { "col": 3 },
+        "milk_carton":  { "col": 4 },
+        "spaghetti":    { "col": 5 },
+        "banana_peel":  { "col": 6 },
+        "mystery_meat": { "col": 7 }
+      }
+    },
+    "launcher_icons": {
+      "row": 1,
+      "items": {
+        "slingshot":           { "col": 0 },
+        "ketchup_gun":        { "col": 1 },
+        "spork_launcher":     { "col": 2 },
+        "lunch_tray_catapult": { "col": 3 },
+        "straw_blowgun":      { "col": 4 },
+        "ammo_frame":         { "col": 5 },
+        "cooldown_indicator":  { "col": 6 },
+        "charge_meter_frame":  { "col": 7 }
+      }
+    },
+    "status_icons": {
+      "row": 2,
+      "items": {
+        "heart_full":    { "col": 0 },
+        "heart_empty":   { "col": 1 },
+        "star_score":    { "col": 2 },
+        "trophy":        { "col": 3 },
+        "skull_ko":      { "col": 4 },
+        "clock_timer":   { "col": 5 },
+        "eye_detection": { "col": 6 },
+        "boot_speed":    { "col": 7 }
+      }
+    },
+    "button_prompts": {
+      "row": 3,
+      "items": {
+        "button_a":   { "col": 0 },
+        "button_b":   { "col": 1 },
+        "button_x":   { "col": 2 },
+        "button_y":   { "col": 3 },
+        "trigger_rt": { "col": 4 },
+        "cursor":     { "col": 5 },
+        "checkmark":  { "col": 6 },
+        "x_mark":     { "col": 7 }
+      }
+    }
+  }
+}

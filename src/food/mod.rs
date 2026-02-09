@@ -6,7 +6,7 @@ pub mod trajectory;
 
 use bevy::prelude::*;
 
-use crate::states::GameState;
+use crate::states::{GameSessionActive, GameState};
 
 pub struct FoodPlugin;
 
@@ -18,7 +18,8 @@ impl Plugin for FoodPlugin {
                 spawning::setup_food_spawns,
                 spawning::initial_food_spawn,
                 launcher::setup_launcher_spawns,
-            ),
+            )
+                .run_if(not(resource_exists::<GameSessionActive>)),
         )
         .add_systems(
             FixedUpdate,

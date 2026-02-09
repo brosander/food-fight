@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use super::components::*;
+use crate::sprites::{AnimationState, FrameRange, SpriteAssets, food_atlas_index, food_type_row};
 use crate::states::Gameplay;
 
 /// Hardcoded food spawn positions for the placeholder arena.
@@ -40,6 +41,7 @@ pub fn food_respawn_system(
     mut commands: Commands,
     time: Res<Time>,
     mut spawn_points: Query<(&Transform, &mut FoodSpawnPoint)>,
+    sprite_assets: Res<SpriteAssets>,
 ) {
     let mut rng = rand::thread_rng();
 
@@ -52,10 +54,16 @@ pub fn food_respawn_system(
         if spawn_point.respawn_timer.finished() {
             let food_type = FoodType::ALL[rng.gen_range(0..FoodType::ALL.len())];
             let stats = food_type.stats();
+            let row = food_type_row(&food_type);
+            let ground_index = food_atlas_index(row, 0);
 
             commands.spawn((
                 Sprite {
-                    color: stats.color,
+                    image: sprite_assets.food_image.clone(),
+                    texture_atlas: Some(TextureAtlas {
+                        layout: sprite_assets.food_layout.clone(),
+                        index: ground_index,
+                    }),
                     custom_size: Some(stats.size),
                     ..default()
                 },
@@ -69,6 +77,15 @@ pub fn food_respawn_system(
                     food_type,
                     damage: stats.damage,
                 },
+                AnimationState::new(
+                    "ground",
+                    FrameRange {
+                        start: food_atlas_index(row, 0),
+                        end: food_atlas_index(row, 1),
+                        fps: 3.0,
+                        looping: true,
+                    },
+                ),
                 Gameplay,
             ));
 
@@ -104,16 +121,22 @@ pub fn reset_spawn_point_system(
 }
 
 /// Initial spawn: immediately spawn food at all points on game start.
-pub fn initial_food_spawn(mut commands: Commands) {
+pub fn initial_food_spawn(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
     let mut rng = rand::thread_rng();
 
     for &(x, y) in SPAWN_POSITIONS {
         let food_type = FoodType::ALL[rng.gen_range(0..FoodType::ALL.len())];
         let stats = food_type.stats();
+        let row = food_type_row(&food_type);
+        let ground_index = food_atlas_index(row, 0);
 
         commands.spawn((
             Sprite {
-                color: stats.color,
+                image: sprite_assets.food_image.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: sprite_assets.food_layout.clone(),
+                    index: ground_index,
+                }),
                 custom_size: Some(stats.size),
                 ..default()
             },
@@ -123,6 +146,15 @@ pub fn initial_food_spawn(mut commands: Commands) {
                 food_type,
                 damage: stats.damage,
             },
+            AnimationState::new(
+                "ground",
+                FrameRange {
+                    start: food_atlas_index(row, 0),
+                    end: food_atlas_index(row, 1),
+                    fps: 3.0,
+                    looping: true,
+                },
+            ),
             Gameplay,
         ));
     }

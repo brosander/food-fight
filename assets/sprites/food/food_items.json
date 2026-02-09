@@ -1,0 +1,101 @@
+{
+  "texture": "sprites/food/food_items.png",
+  "tile_size": [16, 16],
+  "columns": 8,
+  "rows": 8,
+  "total_frames": 64,
+  "frame_labels": ["ground", "pickup_sparkle", "spin_1", "spin_2", "arc_peak", "impact", "splatter", "remains"],
+  "food_types": {
+    "pizza": {
+      "row": 0,
+      "entity_size": [14, 14],
+      "trajectory": "straight",
+      "damage": 15,
+      "speed": 300,
+      "ground_frames": [0, 1],
+      "flight_frames": [2, 3],
+      "impact_frames": [5, 6],
+      "splat_frame": 7
+    },
+    "meatball": {
+      "row": 1,
+      "entity_size": [10, 10],
+      "trajectory": "arc",
+      "damage": 20,
+      "speed": 250,
+      "ground_frames": [0, 1],
+      "flight_frames": [2, 3],
+      "arc_peak_frame": 4,
+      "impact_frames": [5, 6],
+      "splat_frame": 7
+    },
+    "jello": {
+      "row": 2,
+      "entity_size": [12, 12],
+      "trajectory": "bounce",
+      "damage": 8,
+      "speed": 350,
+      "ground_frames": [0, 1],
+      "flight_frames": [2, 3],
+      "impact_frames": [5, 6],
+      "splat_frame": 7
+    },
+    "grape": {
+      "row": 3,
+      "entity_size": [6, 6],
+      "trajectory": "straight",
+      "damage": 5,
+      "speed": 400,
+      "ground_frames": [0, 1],
+      "flight_frames": [2, 3],
+      "impact_frames": [5, 6],
+      "splat_frame": 7
+    },
+    "milk_carton": {
+      "row": 4,
+      "entity_size": [12, 16],
+      "trajectory": "arc",
+      "damage": 25,
+      "speed": 200,
+      "ground_frames": [0, 1],
+      "flight_frames": [2, 3],
+      "arc_peak_frame": 4,
+      "impact_frames": [5, 6],
+      "splat_frame": 7
+    },
+    "spaghetti": {
+      "row": 5,
+      "entity_size": [14, 8],
+      "trajectory": "straight",
+      "damage": 12,
+      "speed": 280,
+      "ground_frames": [0, 1],
+      "flight_frames": [2, 3],
+      "impact_frames": [5, 6],
+      "splat_frame": 7
+    },
+    "banana_peel": {
+      "row": 6,
+      "entity_size": [12, 8],
+      "trajectory": "arc",
+      "damage": 3,
+      "speed": 200,
+      "ground_frames": [0, 1],
+      "flight_frames": [2, 3],
+      "arc_peak_frame": 4,
+      "impact_frames": [5, 6],
+      "splat_frame": 7
+    },
+    "mystery_meat": {
+      "row": 7,
+      "entity_size": [16, 16],
+      "trajectory": "straight",
+      "damage": 30,
+      "speed": 220,
+      "ground_frames": [0, 1],
+      "flight_frames": [2, 3],
+      "impact_frames": [5, 6],
+      "splat_frame": 7
+    }
+  }
+}

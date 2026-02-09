@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use super::components::*;
 use crate::controller::read_aim_direction;
 use crate::player::components::GamepadLink;
+use crate::sprites::{SpriteAssets, launcher_atlas_index, launcher_type_row};
 use crate::states::Gameplay;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -113,17 +114,23 @@ const LAUNCHER_SPAWN_POSITIONS: &[(f32, f32)] = &[
 ];
 
 /// Spawn launcher pickups on the map.
-pub fn setup_launcher_spawns(mut commands: Commands) {
+pub fn setup_launcher_spawns(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
     use rand::Rng;
     let mut rng = rand::thread_rng();
 
     for &(x, y) in LAUNCHER_SPAWN_POSITIONS {
         let launcher_type = LauncherType::ALL[rng.gen_range(0..LauncherType::ALL.len())];
         let stats = launcher_type.stats();
+        let row = launcher_type_row(&launcher_type);
+        let ground_index = launcher_atlas_index(row, 0);
 
         commands.spawn((
             Sprite {
-                color: stats.color,
+                image: sprite_assets.launcher_image.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: sprite_assets.launcher_layout.clone(),
+                    index: ground_index,
+                }),
                 custom_size: Some(stats.size),
                 ..default()
             },

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use super::components::*;
+use crate::sprites::{SpriteAssets, effects_atlas_index, food_splat_index};
 use crate::states::Gameplay;
 
 /// Play area bounds (must match movement.rs).
@@ -37,10 +38,17 @@ pub fn straight_trajectory_system(
 pub fn arc_trajectory_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut projectiles: Query<(Entity, &mut Transform, &mut InFlight, &mut ArcFlight)>,
+    mut projectiles: Query<(
+        Entity,
+        &mut Transform,
+        &mut InFlight,
+        &mut ArcFlight,
+        Option<&FoodItem>,
+    )>,
+    sprite_assets: Res<SpriteAssets>,
 ) {
     let dt = time.delta_secs();
-    for (entity, mut transform, mut flight, mut arc) in &mut projectiles {
+    for (entity, mut transform, mut flight, mut arc, food_item) in &mut projectiles {
         // Horizontal movement
         let movement = flight.direction * flight.speed * dt;
         transform.translation.x += movement.x;
@@ -57,7 +65,13 @@ pub fn arc_trajectory_system(
 
         // "Landed" when simulated_z goes below 0
         if arc.simulated_z < 0.0 && arc.vertical_velocity < 0.0 {
-            spawn_splat(&mut commands, transform.translation.truncate(), flight.damage);
+            let food_type = food_item.map(|fi| &fi.food_type);
+            spawn_splat(
+                &mut commands,
+                transform.translation.truncate(),
+                food_type,
+                &sprite_assets,
+            );
             commands.entity(entity).despawn();
             continue;
         }
@@ -75,10 +89,17 @@ pub fn arc_trajectory_system(
 pub fn bounce_trajectory_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut projectiles: Query<(Entity, &mut Transform, &mut InFlight, &mut BounceFlight)>,
+    mut projectiles: Query<(
+        Entity,
+        &mut Transform,
+        &mut InFlight,
+        &mut BounceFlight,
+        Option<&FoodItem>,
+    )>,
+    sprite_assets: Res<SpriteAssets>,
 ) {
     let dt = time.delta_secs();
-    for (entity, mut transform, mut flight, mut bounce) in &mut projectiles {
+    for (entity, mut transform, mut flight, mut bounce, food_item) in &mut projectiles {
         let movement = flight.direction * flight.speed * dt;
         transform.translation.x += movement.x;
         transform.translation.y += movement.y;
@@ -99,9 +120,16 @@ pub fn bounce_trajectory_system(
             bounced = true;
         }
 
+        let food_type = food_item.map(|fi| &fi.food_type);
+
         if bounced {
             if bounce.bounces_remaining == 0 {
-                spawn_splat(&mut commands, transform.translation.truncate(), flight.damage);
+                spawn_splat(
+                    &mut commands,
+                    transform.translation.truncate(),
+                    food_type,
+                    &sprite_assets,
+                );
                 commands.entity(entity).despawn();
                 continue;
             }
@@ -112,16 +140,34 @@ pub fn bounce_trajectory_system(
 
         // Despawn after max range
         if flight.distance_traveled > flight.max_range {
-            spawn_splat(&mut commands, transform.translation.truncate(), flight.damage);
+            spawn_splat(
+                &mut commands,
+                transform.translation.truncate(),
+                food_type,
+                &sprite_assets,
+            );
             commands.entity(entity).despawn();
         }
     }
 }
 
-fn spawn_splat(commands: &mut Commands, position: Vec2, _damage: f32) {
+fn spawn_splat(
+    commands: &mut Commands,
+    position: Vec2,
+    food_type: Option<&FoodType>,
+    sprite_assets: &SpriteAssets,
+) {
+    let index = food_type
+        .map(|ft| food_splat_index(ft))
+        .unwrap_or(effects_atlas_index(1, 0)); // default red splat
+
     commands.spawn((
         Sprite {
-            color: Color::srgba(0.6, 0.1, 0.1, 0.5),
+            image: sprite_assets.effects_image.clone(),
+            texture_atlas: Some(TextureAtlas {
+                layout: sprite_assets.effects_layout.clone(),
+                index,
+            }),
             custom_size: Some(Vec2::new(20.0, 20.0)),
             ..default()
         },

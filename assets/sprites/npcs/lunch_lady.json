@@ -1,0 +1,27 @@
+{
+  "texture": "sprites/npcs/lunch_lady.png",
+  "tile_size": [32, 32],
+  "columns": 6,
+  "rows": 3,
+  "total_frames": 18,
+  "animations": {
+    "idle_stir":        { "row": 0, "start": 0, "end": 1, "fps": 2 },
+    "look_left":        { "row": 0, "start": 2, "end": 2, "fps": 1 },
+    "look_right":       { "row": 0, "start": 3, "end": 3, "fps": 1 },
+    "look_forward":     { "row": 0, "start": 4, "end": 4, "fps": 1 },
+    "ladle_raised":     { "row": 0, "start": 5, "end": 5, "fps": 1 },
+    "suspicious_stir":  { "row": 1, "start": 0, "end": 1, "fps": 2 },
+    "suspicious_left":  { "row": 1, "start": 2, "end": 2, "fps": 1 },
+    "suspicious_right": { "row": 1, "start": 3, "end": 3, "fps": 1 },
+    "suspicious_forward":{ "row": 1, "start": 4, "end": 4, "fps": 1 },
+    "suspicious_ladle": { "row": 1, "start": 5, "end": 5, "fps": 1 },
+    "swing_left":       { "row": 2, "start": 0, "end": 1, "fps": 6 },
+    "swing_right":      { "row": 2, "start": 2, "end": 3, "fps": 6 },
+    "catch":            { "row": 2, "start": 4, "end": 5, "fps": 6 }
+  },
+  "npc_role": "lunch_lady",
+  "entity_size": [28, 28],
+  "detection_radius": 80,
+  "detection_angle_deg": 180,
+  "stationary": true
+}

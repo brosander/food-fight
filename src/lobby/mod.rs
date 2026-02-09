@@ -4,7 +4,8 @@ use bevy::prelude::*;
 
 use crate::food::components::Inventory;
 use crate::player::components::*;
-use crate::states::{GameState, Gameplay};
+use crate::sprites::{AnimationState, FrameRange, PlayerSpriteId, SpriteAssets, player_atlas_index};
+use crate::states::{GameSessionActive, GameState, Gameplay};
 
 pub struct LobbyPlugin;
 
@@ -25,7 +26,10 @@ impl Plugin for LobbyPlugin {
                     .chain()
                     .run_if(in_state(GameState::Lobby)),
             )
-            .add_systems(OnEnter(GameState::Playing), spawn_players_from_lobby);
+            .add_systems(
+                OnEnter(GameState::Playing),
+                spawn_players_from_lobby.run_if(not(resource_exists::<GameSessionActive>)),
+            );
     }
 }
 
@@ -200,11 +204,23 @@ fn keyboard_quick_start_system(
     }
 }
 
-fn spawn_players_from_lobby(mut commands: Commands, lobby: Res<Lobby>) {
+fn spawn_players_from_lobby(
+    mut commands: Commands,
+    lobby: Res<Lobby>,
+    sprite_assets: Res<SpriteAssets>,
+) {
     for slot in &lobby.slots {
+        let player_id = slot.player_id as usize;
+        let idle_start = player_atlas_index(0, 4);
+        let idle_end = player_atlas_index(0, 5);
+
         commands.spawn((
             Sprite {
-                color: slot.color,
+                image: sprite_assets.player_images[player_id].clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: sprite_assets.player_layout.clone(),
+                    index: idle_start,
+                }),
                 custom_size: Some(Vec2::new(32.0, 32.0)),
                 ..default()
             },
@@ -218,6 +234,16 @@ fn spawn_players_from_lobby(mut commands: Commands, lobby: Res<Lobby>) {
             Score(0),
             GamepadLink(slot.gamepad_entity),
             Inventory { held_food: None },
+            PlayerSpriteId(slot.player_id),
+            AnimationState::new(
+                "idle",
+                FrameRange {
+                    start: idle_start,
+                    end: idle_end,
+                    fps: 3.0,
+                    looping: true,
+                },
+            ),
             Gameplay,
         ));
     }

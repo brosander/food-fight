@@ -3,7 +3,7 @@ pub mod loading;
 
 use bevy::prelude::*;
 
-use crate::states::GameState;
+use crate::states::{GameSessionActive, GameState};
 
 /// Marker component for solid wall/obstacle entities.
 #[derive(Component)]
@@ -15,7 +15,10 @@ pub struct MapPlugin;
 
 impl Plugin for MapPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), loading::spawn_cafeteria)
+        app.add_systems(
+                OnEnter(GameState::Playing),
+                loading::spawn_cafeteria.run_if(not(resource_exists::<GameSessionActive>)),
+            )
             .add_systems(
                 FixedUpdate,
                 (

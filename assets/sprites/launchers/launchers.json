@@ -1,0 +1,64 @@
+{
+  "texture": "sprites/launchers/launchers.png",
+  "tile_size": [32, 32],
+  "columns": 5,
+  "rows": 5,
+  "total_frames": 25,
+  "frame_labels": ["ground_pickup", "equipped_held", "firing_1", "firing_2", "depleted"],
+  "launcher_types": {
+    "slingshot": {
+      "row": 0,
+      "entity_size": [16, 16],
+      "cooldown": 0.5,
+      "uses": 10,
+      "ground_frame": 0,
+      "equipped_frame": 1,
+      "fire_frames": [2, 3],
+      "depleted_frame": 4
+    },
+    "ketchup_gun": {
+      "row": 1,
+      "entity_size": [18, 12],
+      "cooldown": 0.08,
+      "uses": 40,
+      "rapid_fire": true,
+      "ground_frame": 0,
+      "equipped_frame": 1,
+      "fire_frames": [2, 3],
+      "depleted_frame": 4
+    },
+    "spork_launcher": {
+      "row": 2,
+      "entity_size": [14, 14],
+      "cooldown": 0.3,
+      "uses": 15,
+      "ground_frame": 0,
+      "equipped_frame": 1,
+      "fire_frames": [2, 3],
+      "depleted_frame": 4
+    },
+    "lunch_tray_catapult": {
+      "row": 3,
+      "entity_size": [20, 16],
+      "cooldown": 1.5,
+      "uses": 5,
+      "charge_mechanic": true,
+      "ground_frame": 0,
+      "equipped_frame": 1,
+      "charge_start_frame": 2,
+      "charge_full_frame": 3,
+      "depleted_frame": 4
+    },
+    "straw_blowgun": {
+      "row": 4,
+      "entity_size": [20, 6],
+      "cooldown": 0.12,
+      "uses": 50,
+      "rapid_fire": true,
+      "ground_frame": 0,
+      "equipped_frame": 1,
+      "fire_frames": [2, 3],
+      "depleted_frame": 4
+    }
+  }
+}

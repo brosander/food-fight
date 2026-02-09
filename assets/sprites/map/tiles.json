@@ -1,0 +1,69 @@
+{
+  "texture": "sprites/map/tiles.png",
+  "tile_size": [16, 16],
+  "columns": 8,
+  "rows": 8,
+  "total_frames": 64,
+  "tiles": {
+    "floor": {
+      "cafeteria_1": { "row": 0, "col": 0 },
+      "cafeteria_2": { "row": 0, "col": 1 },
+      "cafeteria_3": { "row": 0, "col": 2 },
+      "cafeteria_4": { "row": 0, "col": 3 },
+      "kitchen_1":   { "row": 0, "col": 4 },
+      "kitchen_2":   { "row": 0, "col": 5 },
+      "kitchen_3":   { "row": 0, "col": 6 },
+      "kitchen_4":   { "row": 0, "col": 7 }
+    },
+    "walls": {
+      "horizontal_1":    { "row": 1, "col": 0 },
+      "horizontal_2":    { "row": 1, "col": 1 },
+      "vertical_1":      { "row": 1, "col": 2 },
+      "vertical_2":      { "row": 1, "col": 3 },
+      "corner_top_left":   { "row": 1, "col": 4 },
+      "corner_top_right":  { "row": 1, "col": 5 },
+      "corner_bottom_left":  { "row": 1, "col": 6 },
+      "corner_bottom_right": { "row": 1, "col": 7 }
+    },
+    "tables": {
+      "top_left":      { "row": 2, "col": 0 },
+      "top_right":     { "row": 2, "col": 1 },
+      "bottom_left":   { "row": 2, "col": 2 },
+      "bottom_right":  { "row": 2, "col": 3 },
+      "edge_top":      { "row": 2, "col": 4 },
+      "edge_bottom":   { "row": 2, "col": 5 },
+      "edge_left":     { "row": 2, "col": 6 },
+      "center":        { "row": 2, "col": 7 }
+    },
+    "counter": {
+      "top_1": { "row": 3, "col": 0 },
+      "top_2": { "row": 3, "col": 1 },
+      "top_3": { "row": 3, "col": 2 },
+      "top_4": { "row": 3, "col": 3 },
+      "front_1": { "row": 3, "col": 4 },
+      "front_2": { "row": 3, "col": 5 },
+      "front_3": { "row": 3, "col": 6 },
+      "front_4": { "row": 3, "col": 7 }
+    },
+    "objects": {
+      "chair":          { "row": 4, "col": 0 },
+      "trash_can":      { "row": 4, "col": 1 },
+      "tray_return":    { "row": 4, "col": 2 },
+      "vending_machine":{ "row": 4, "col": 3 },
+      "pillar":         { "row": 4, "col": 4 },
+      "door":           { "row": 4, "col": 5 },
+      "serving_station":{ "row": 4, "col": 6 },
+      "cash_register":  { "row": 4, "col": 7 }
+    },
+    "decorative": {
+      "bulletin_board": { "row": 5, "col": 0 },
+      "clock":          { "row": 5, "col": 1 },
+      "menu_sign":      { "row": 5, "col": 2 },
+      "exit_sign":      { "row": 5, "col": 3 },
+      "wet_floor_sign": { "row": 5, "col": 4 },
+      "food_stain":     { "row": 5, "col": 5 },
+      "backpack":       { "row": 5, "col": 6 },
+      "lunch_tray":     { "row": 5, "col": 7 }
+    }
+  }
+}

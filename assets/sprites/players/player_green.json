@@ -1,0 +1,23 @@
+{
+  "texture": "sprites/players/player_green.png",
+  "tile_size": [32, 32],
+  "columns": 8,
+  "rows": 4,
+  "total_frames": 32,
+  "animations": {
+    "walk_down":    { "row": 0, "start": 0, "end": 3, "fps": 8 },
+    "idle":         { "row": 0, "start": 4, "end": 5, "fps": 3 },
+    "stunned":      { "row": 0, "start": 6, "end": 7, "fps": 4 },
+    "walk_up":      { "row": 1, "start": 0, "end": 3, "fps": 8 },
+    "throw_windup": { "row": 1, "start": 4, "end": 5, "fps": 6 },
+    "throw_release":{ "row": 1, "start": 6, "end": 7, "fps": 6 },
+    "walk_left":    { "row": 2, "start": 0, "end": 3, "fps": 8 },
+    "hit_reaction": { "row": 2, "start": 4, "end": 5, "fps": 6 },
+    "pickup":       { "row": 2, "start": 6, "end": 7, "fps": 6 },
+    "walk_right":   { "row": 3, "start": 0, "end": 3, "fps": 8 },
+    "holding_food": { "row": 3, "start": 4, "end": 5, "fps": 3 },
+    "victory":      { "row": 3, "start": 6, "end": 7, "fps": 4 }
+  },
+  "player_color": "green",
+  "entity_size": [32, 32]
+}

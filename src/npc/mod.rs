@@ -7,14 +7,18 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
-use crate::states::{GameState, Gameplay};
+use crate::sprites::{AnimationState, FrameRange, SpriteAssets, atlas_index};
+use crate::states::{GameSessionActive, GameState, Gameplay};
 use components::*;
 
 pub struct NpcPlugin;
 
 impl Plugin for NpcPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_npcs)
+        app.add_systems(
+                OnEnter(GameState::Playing),
+                spawn_npcs.run_if(not(resource_exists::<GameSessionActive>)),
+            )
             .add_systems(
                 FixedUpdate,
                 (
@@ -25,18 +29,22 @@ impl Plugin for NpcPlugin {
                     chase::chase_system,
                     chase::catch_system,
                     chase::caught_penalty_system,
-                    npc_visual_feedback_system,
                 )
                     .run_if(in_state(GameState::Playing)),
             );
     }
 }
 
-fn spawn_npcs(mut commands: Commands) {
+fn spawn_npcs(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
     // Teacher: patrols between tables
+    let teacher_idle = atlas_index(0, 6, 7); // patrol_idle
     commands.spawn((
         Sprite {
-            color: Color::srgb(0.8, 0.6, 0.2),
+            image: sprite_assets.teacher_image.clone(),
+            texture_atlas: Some(TextureAtlas {
+                layout: sprite_assets.teacher_layout.clone(),
+                index: teacher_idle,
+            }),
             custom_size: Some(Vec2::new(28.0, 28.0)),
             ..default()
         },
@@ -58,13 +66,27 @@ fn spawn_npcs(mut commands: Commands) {
             ],
         },
         Facing(Vec2::Y),
+        AnimationState::new(
+            "patrol_idle",
+            FrameRange {
+                start: teacher_idle,
+                end: teacher_idle,
+                fps: 1.0,
+                looping: true,
+            },
+        ),
         Gameplay,
     ));
 
     // Principal: slower, wider detection, patrols center area
+    let principal_idle = atlas_index(0, 6, 7); // patrol_idle
     commands.spawn((
         Sprite {
-            color: Color::srgb(0.3, 0.3, 0.6),
+            image: sprite_assets.principal_image.clone(),
+            texture_atlas: Some(TextureAtlas {
+                layout: sprite_assets.principal_layout.clone(),
+                index: principal_idle,
+            }),
             custom_size: Some(Vec2::new(32.0, 32.0)),
             ..default()
         },
@@ -86,13 +108,27 @@ fn spawn_npcs(mut commands: Commands) {
             ],
         },
         Facing(Vec2::Y),
+        AnimationState::new(
+            "patrol_idle",
+            FrameRange {
+                start: principal_idle,
+                end: principal_idle,
+                fps: 1.0,
+                looping: true,
+            },
+        ),
         Gameplay,
     ));
 
     // Lunch Lady: stationary near counter
+    let ll_idle = atlas_index(0, 0, 6); // idle_stir frame 0
     commands.spawn((
         Sprite {
-            color: Color::srgb(0.9, 0.5, 0.7),
+            image: sprite_assets.lunch_lady_image.clone(),
+            texture_atlas: Some(TextureAtlas {
+                layout: sprite_assets.lunch_lady_layout.clone(),
+                index: ll_idle,
+            }),
             custom_size: Some(Vec2::new(28.0, 28.0)),
             ..default()
         },
@@ -109,25 +145,15 @@ fn spawn_npcs(mut commands: Commands) {
             waypoints: vec![Vec2::new(0.0, 240.0)],
         },
         Facing(-Vec2::Y),
+        AnimationState::new(
+            "idle_stir",
+            FrameRange {
+                start: ll_idle,
+                end: atlas_index(0, 1, 6),
+                fps: 2.0,
+                looping: true,
+            },
+        ),
         Gameplay,
     ));
-}
-
-/// Visual feedback for NPC state: change color/brightness based on state.
-fn npc_visual_feedback_system(mut npcs: Query<(&NpcState, &NpcAuthority, &mut Sprite)>) {
-    for (state, npc, mut sprite) in &mut npcs {
-        let base_color = match npc.role {
-            NpcRole::Teacher => Color::srgb(0.8, 0.6, 0.2),
-            NpcRole::Principal => Color::srgb(0.3, 0.3, 0.6),
-            NpcRole::LunchLady => Color::srgb(0.9, 0.5, 0.7),
-            NpcRole::Janitor => Color::srgb(0.4, 0.6, 0.4),
-        };
-
-        sprite.color = match state {
-            NpcState::Patrolling { .. } => base_color,
-            NpcState::Suspicious { .. } => Color::srgb(1.0, 0.9, 0.0), // Yellow alert
-            NpcState::Chasing { .. } => Color::srgb(1.0, 0.2, 0.2),   // Red chase
-            NpcState::Returning { .. } => base_color,
-        };
-    }
 }

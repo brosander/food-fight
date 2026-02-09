@@ -1,4 +1,3 @@
-pub mod animation;
 pub mod components;
 pub mod input;
 pub mod movement;
@@ -16,11 +15,11 @@ impl Plugin for PlayerPlugin {
             (
                 input::input_system,
                 movement::movement_system,
-                animation::animation_system,
             )
                 .chain()
                 .run_if(in_state(GameState::Playing)),
         );
         // Player spawning is handled by LobbyPlugin::spawn_players_from_lobby
+        // Player animation is handled by SpritePlugin
     }
 }

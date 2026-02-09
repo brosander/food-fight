@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use super::components::*;
 use crate::controller::read_aim_direction;
 use crate::player::components::GamepadLink;
+use crate::sprites::{AnimationState, FrameRange, SpriteAssets, food_atlas_index, food_type_row};
 use crate::states::Gameplay;
 
 const PICKUP_RANGE: f32 = 40.0;
@@ -55,6 +56,7 @@ pub fn throw_system(
     mut commands: Commands,
     gamepads: Query<&Gamepad>,
     players: Query<(Entity, &Transform, &GamepadLink, &Inventory)>,
+    sprite_assets: Res<SpriteAssets>,
 ) {
     for (player_entity, player_tf, link, inventory) in &players {
         let Some(food_type) = &inventory.held_food else {
@@ -76,11 +78,17 @@ pub fn throw_system(
 
         let food_type = *food_type;
         let stats = food_type.stats();
+        let row = food_type_row(&food_type);
+        let flight_start = food_atlas_index(row, 2);
 
         // Spawn projectile
         let mut projectile = commands.spawn((
             Sprite {
-                color: stats.color,
+                image: sprite_assets.food_image.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: sprite_assets.food_layout.clone(),
+                    index: flight_start,
+                }),
                 custom_size: Some(stats.size * 0.8),
                 ..default()
             },
@@ -97,6 +105,19 @@ pub fn throw_system(
                 max_range: 600.0,
                 distance_traveled: 0.0,
             },
+            FoodItem {
+                food_type,
+                damage: stats.damage,
+            },
+            AnimationState::new(
+                "flight",
+                FrameRange {
+                    start: food_atlas_index(row, 2),
+                    end: food_atlas_index(row, 3),
+                    fps: 10.0,
+                    looping: true,
+                },
+            ),
             Gameplay,
         ));
 
