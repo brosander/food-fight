@@ -31,6 +31,17 @@ pub struct PatrolPath {
     pub waypoints: Vec<Vec2>,
 }
 
+/// NPC wanders randomly within a radius of a fixed center point.
+#[derive(Component)]
+pub struct WanderZone {
+    pub center: Vec2,
+    pub radius: f32,
+}
+
+/// Current random destination for a wandering NPC.
+#[derive(Component)]
+pub struct WanderTarget(pub Vec2);
+
 /// Facing direction of the NPC (normalized).
 #[derive(Component)]
 pub struct Facing(pub Vec2);

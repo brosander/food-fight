@@ -26,6 +26,7 @@ impl Plugin for NpcPlugin {
                     detection::detection_system,
                     patrol::patrol_system,
                     patrol::returning_system,
+                    patrol::wander_system,
                     chase::chase_system,
                     chase::catch_system,
                     chase::caught_penalty_system,
@@ -36,7 +37,8 @@ impl Plugin for NpcPlugin {
 }
 
 fn spawn_npcs(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
-    // Teacher: patrols between tables
+    // Teacher: wanders near starting area, chases students who throw food
+    let teacher_start = Vec2::new(-200.0, 0.0);
     let teacher_idle = atlas_index(0, 6, 7); // patrol_idle
     commands.spawn((
         Sprite {
@@ -48,7 +50,7 @@ fn spawn_npcs(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
             custom_size: Some(Vec2::new(28.0, 28.0)),
             ..default()
         },
-        Transform::from_xyz(-200.0, 0.0, 1.5),
+        Transform::from_xyz(teacher_start.x, teacher_start.y, 1.5),
         NpcAuthority {
             role: NpcRole::Teacher,
             detection_radius: 150.0,
@@ -57,13 +59,13 @@ fn spawn_npcs(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
             catch_radius: 30.0,
         },
         NpcState::Patrolling { waypoint_index: 0 },
+        WanderZone {
+            center: teacher_start,
+            radius: 80.0,
+        },
+        WanderTarget(teacher_start),
         PatrolPath {
-            waypoints: vec![
-                Vec2::new(-200.0, 200.0),
-                Vec2::new(200.0, 200.0),
-                Vec2::new(200.0, -200.0),
-                Vec2::new(-200.0, -200.0),
-            ],
+            waypoints: vec![teacher_start],
         },
         Facing(Vec2::Y),
         AnimationState::new(
