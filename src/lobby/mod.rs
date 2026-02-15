@@ -1,8 +1,16 @@
+//! Lobby system: join/leave/ready flow and player entity spawning.
+//!
+//! Owns the [`Lobby`] resource (`Vec<PlayerSlot>`), which tracks which controllers
+//! have joined and their ready state. On `OnEnter(Playing)` (first time only, guarded
+//! by `GameSessionActive`), `spawn_players_from_lobby` creates player entities with
+//! `ControllerLink`, `ControllerInput`, `Health`, `Inventory`, and sprite components.
+
 pub mod ui;
 
 use bevy::prelude::*;
 
 use crate::food::components::Inventory;
+use crate::input::{ControllerId, ControllerInput, ControllerRegistry};
 use crate::player::components::*;
 use crate::sprites::{AnimationState, FrameRange, PlayerSpriteId, SpriteAssets, player_atlas_index};
 use crate::states::{GameSessionActive, GameState, Gameplay};
@@ -54,7 +62,7 @@ pub struct Lobby {
 
 pub struct PlayerSlot {
     pub player_id: u8,
-    pub gamepad_entity: Entity,
+    pub controller_id: ControllerId,
     pub ready: bool,
     pub color: Color,
     pub display_name: String,
@@ -62,17 +70,17 @@ pub struct PlayerSlot {
 
 fn lobby_join_system(
     mut lobby: ResMut<Lobby>,
-    gamepads: Query<(Entity, &Gamepad)>,
+    registry: Res<ControllerRegistry>,
 ) {
-    for (gamepad_entity, gamepad) in &gamepads {
-        if !gamepad.just_pressed(GamepadButton::South) {
+    for controller in &registry.controllers {
+        if !controller.input.join.just_pressed {
             continue;
         }
 
         let already_joined = lobby
             .slots
             .iter()
-            .any(|slot| slot.gamepad_entity == gamepad_entity);
+            .any(|slot| slot.controller_id == controller.id);
         if already_joined {
             continue;
         }
@@ -86,7 +94,7 @@ fn lobby_join_system(
 
         lobby.slots.push(PlayerSlot {
             player_id,
-            gamepad_entity,
+            controller_id: controller.id,
             ready: false,
             color,
             display_name: format!("Player {}", player_id + 1),
@@ -102,21 +110,21 @@ fn lobby_join_system(
 
 fn lobby_leave_system(
     mut lobby: ResMut<Lobby>,
-    gamepads: Query<(Entity, &Gamepad)>,
+    registry: Res<ControllerRegistry>,
 ) {
     let mut to_remove = Vec::new();
 
-    for (gamepad_entity, gamepad) in &gamepads {
-        if gamepad.just_pressed(GamepadButton::East) {
-            to_remove.push(gamepad_entity);
+    for controller in &registry.controllers {
+        if controller.input.leave.just_pressed {
+            to_remove.push(controller.id);
         }
     }
 
-    for entity in to_remove {
+    for id in to_remove {
         if let Some(pos) = lobby
             .slots
             .iter()
-            .position(|s| s.gamepad_entity == entity)
+            .position(|s| s.controller_id == id)
         {
             let removed = lobby.slots.remove(pos);
             info!("Player {} left the lobby", removed.display_name);
@@ -133,15 +141,15 @@ fn lobby_leave_system(
 
 fn lobby_ready_system(
     mut lobby: ResMut<Lobby>,
-    gamepads: Query<(Entity, &Gamepad)>,
+    registry: Res<ControllerRegistry>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    for (gamepad_entity, gamepad) in &gamepads {
-        if gamepad.just_pressed(GamepadButton::Start) {
+    for controller in &registry.controllers {
+        if controller.input.pause.just_pressed {
             if let Some(slot) = lobby
                 .slots
                 .iter_mut()
-                .find(|s| s.gamepad_entity == gamepad_entity)
+                .find(|s| s.controller_id == controller.id)
             {
                 slot.ready = !slot.ready;
                 info!(
@@ -161,23 +169,23 @@ fn lobby_ready_system(
     }
 }
 
-/// Keyboard shortcut: press Space to auto-join all connected gamepads and start immediately.
+/// Keyboard shortcut: press Space to auto-join all connected controllers and start immediately.
 fn keyboard_quick_start_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut lobby: ResMut<Lobby>,
-    gamepads: Query<(Entity, &Gamepad)>,
+    registry: Res<ControllerRegistry>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if !keyboard.just_pressed(KeyCode::Space) {
         return;
     }
 
-    // Auto-join all connected gamepads that aren't already in the lobby
-    for (gamepad_entity, _gamepad) in &gamepads {
+    // Auto-join all connected controllers that aren't already in the lobby
+    for controller in &registry.controllers {
         let already_joined = lobby
             .slots
             .iter()
-            .any(|slot| slot.gamepad_entity == gamepad_entity);
+            .any(|slot| slot.controller_id == controller.id);
         if already_joined || lobby.slots.len() >= 4 {
             continue;
         }
@@ -187,20 +195,20 @@ fn keyboard_quick_start_system(
 
         lobby.slots.push(PlayerSlot {
             player_id,
-            gamepad_entity,
+            controller_id: controller.id,
             ready: true,
             color,
             display_name: format!("Player {}", player_id + 1),
         });
 
-        info!("Quick start: Player {} joined with gamepad {:?}", player_id + 1, gamepad_entity);
+        info!("Quick start: Player {} joined with controller {:?}", player_id + 1, controller.id);
     }
 
     if !lobby.slots.is_empty() {
         info!("Quick start: {} players, launching game!", lobby.slots.len());
         next_state.set(GameState::Playing);
     } else {
-        info!("Quick start: no gamepads connected — cannot start");
+        info!("Quick start: no controllers connected — cannot start");
     }
 }
 
@@ -232,7 +240,8 @@ fn spawn_players_from_lobby(
             Health(100.0),
             Velocity(Vec2::ZERO),
             Score(0),
-            GamepadLink(slot.gamepad_entity),
+            ControllerLink(slot.controller_id),
+            ControllerInput::default(),
             Inventory { held_food: None },
             PlayerSpriteId(slot.player_id),
             AnimationState::new(

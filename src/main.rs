@@ -1,11 +1,14 @@
 mod combat;
 mod controller;
 mod food;
+pub mod input;
 mod lobby;
 mod map;
 mod npc;
 mod player;
 mod sprites;
+#[cfg(feature = "steam")]
+mod steam;
 mod states;
 mod ui;
 
@@ -13,28 +16,35 @@ use bevy::prelude::*;
 use states::{GameSessionActive, GameState};
 
 fn main() {
-    App::new()
-        .add_plugins(
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "Cafeteria Food Fight".to_string(),
-                        resolution: window_resolution(),
-                        #[cfg(target_os = "linux")]
-                        mode: bevy::window::WindowMode::BorderlessFullscreen(
-                            bevy::window::MonitorSelection::Primary,
-                        ),
-                        ..default()
-                    }),
+    let mut app = App::new();
+
+    app.add_plugins(
+        DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Cafeteria Food Fight".to_string(),
+                    resolution: window_resolution(),
+                    #[cfg(target_os = "linux")]
+                    mode: bevy::window::WindowMode::Fullscreen(
+                        bevy::window::MonitorSelection::Primary,
+                    ),
                     ..default()
-                })
-                .set(ImagePlugin::default_nearest()),
-        )
-        .insert_resource(ClearColor(Color::srgb(0.15, 0.15, 0.2)))
-        .init_state::<GameState>()
-        // Sprite assets (must be before gameplay plugins)
-        .add_plugins(sprites::SpritePlugin)
-        // Core plugins
+                }),
+                ..default()
+            })
+            .set(ImagePlugin::default_nearest()),
+    )
+    .insert_resource(ClearColor(Color::srgb(0.15, 0.15, 0.2)))
+    .init_state::<GameState>()
+    // Sprite assets (must be before gameplay plugins)
+    .add_plugins(sprites::SpritePlugin);
+
+    // Steam integration (must be before input plugin)
+    #[cfg(feature = "steam")]
+    app.add_plugins(steam::SteamInputPlugin);
+
+    // Input abstraction layer + core plugins
+    app.add_plugins(input::InputPlugin)
         .add_plugins(controller::ControllerPlugin)
         .add_plugins(lobby::LobbyPlugin)
         // Gameplay plugins

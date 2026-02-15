@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 
 use super::components::*;
-use crate::controller::read_aim_direction;
-use crate::player::components::GamepadLink;
+use crate::input::ControllerInput;
 use crate::sprites::{SpriteAssets, launcher_atlas_index, launcher_type_row};
 use crate::states::Gameplay;
 
@@ -146,20 +145,15 @@ const PICKUP_RANGE: f32 = 40.0;
 /// Pickup system for launchers: player presses West (X/Square) near a launcher.
 pub fn launcher_pickup_system(
     mut commands: Commands,
-    gamepads: Query<&Gamepad>,
-    players: Query<(Entity, &Transform, &GamepadLink, Option<&EquippedLauncher>)>,
+    players: Query<(Entity, &Transform, &ControllerInput, Option<&EquippedLauncher>)>,
     launchers: Query<(Entity, &Transform, &LauncherPickup)>,
 ) {
-    for (player_entity, player_tf, link, equipped) in &players {
+    for (player_entity, player_tf, input, equipped) in &players {
         if equipped.is_some() {
             continue;
         }
 
-        let Ok(gamepad) = gamepads.get(link.0) else {
-            continue;
-        };
-
-        if !gamepad.just_pressed(GamepadButton::West) {
+        if !input.pickup_launcher.just_pressed {
             continue;
         }
 
@@ -195,16 +189,15 @@ pub fn launcher_pickup_system(
 pub fn launcher_fire_system(
     mut commands: Commands,
     time: Res<Time>,
-    gamepads: Query<&Gamepad>,
     mut players: Query<(
         Entity,
         &Transform,
-        &GamepadLink,
+        &ControllerInput,
         &mut EquippedLauncher,
         Option<&ChargingShot>,
     )>,
 ) {
-    for (player_entity, player_tf, link, mut launcher, _charging) in &mut players {
+    for (player_entity, player_tf, input, mut launcher, _charging) in &mut players {
         launcher.cooldown_timer.tick(time.delta());
 
         // Skip catapult — handled by charge system
@@ -212,11 +205,7 @@ pub fn launcher_fire_system(
             continue;
         }
 
-        let Ok(gamepad) = gamepads.get(link.0) else {
-            continue;
-        };
-
-        let aim_direction = read_aim_direction(gamepad);
+        let aim_direction = input.aim_direction();
 
         // For rapid-fire weapons, fire while trigger is held
         let is_rapid = matches!(
@@ -224,9 +213,9 @@ pub fn launcher_fire_system(
             LauncherType::KetchupGun | LauncherType::StrawBlowgun
         );
         let trigger = if is_rapid {
-            gamepad.pressed(GamepadButton::RightTrigger2)
+            input.fire.pressed
         } else {
-            gamepad.just_pressed(GamepadButton::RightTrigger2)
+            input.fire.just_pressed
         };
 
         if !trigger || aim_direction == Vec2::ZERO || !launcher.cooldown_timer.finished() {
@@ -272,28 +261,23 @@ pub fn launcher_fire_system(
 pub fn catapult_charge_system(
     mut commands: Commands,
     time: Res<Time>,
-    gamepads: Query<&Gamepad>,
     mut players: Query<(
         Entity,
         &Transform,
-        &GamepadLink,
+        &ControllerInput,
         &mut EquippedLauncher,
         Option<&mut ChargingShot>,
     )>,
 ) {
-    for (player_entity, player_tf, link, mut launcher, mut charging) in &mut players {
+    for (player_entity, player_tf, input, mut launcher, mut charging) in &mut players {
         if launcher.launcher_type != LauncherType::LunchTrayCatapult {
             continue;
         }
 
         launcher.cooldown_timer.tick(time.delta());
 
-        let Ok(gamepad) = gamepads.get(link.0) else {
-            continue;
-        };
-
-        let holding = gamepad.pressed(GamepadButton::RightTrigger2);
-        let just_released = gamepad.just_released(GamepadButton::RightTrigger2);
+        let holding = input.fire.pressed;
+        let just_released = input.fire.just_released;
 
         if holding && launcher.cooldown_timer.finished() && launcher.uses_remaining > 0 {
             if let Some(ref mut charge) = charging {
@@ -316,7 +300,7 @@ pub fn catapult_charge_system(
             commands.entity(player_entity).remove::<ChargingShot>();
 
             if charge_fraction > 0.05 && launcher.uses_remaining > 0 {
-                let aim_direction = read_aim_direction(gamepad);
+                let aim_direction = input.aim_direction();
 
                 let stats = launcher.launcher_type.stats();
                 let base_damage = 10.0 * stats.damage_multiplier * (0.5 + charge_fraction * 1.5);

@@ -3,6 +3,7 @@ pub mod scoreboard;
 
 use bevy::prelude::*;
 
+use crate::input::ControllerRegistry;
 use crate::lobby::Lobby;
 use crate::states::{GameSessionActive, GameState, Gameplay};
 
@@ -109,15 +110,15 @@ fn setup_main_menu(mut commands: Commands) {
 
 fn main_menu_system(
     keyboard: Res<ButtonInput<KeyCode>>,
-    gamepads: Query<&Gamepad>,
+    registry: Res<ControllerRegistry>,
     mut next_state: ResMut<NextState<GameState>>,
     menu_query: Query<Entity, With<MainMenuUi>>,
     mut commands: Commands,
 ) {
     let mut go = keyboard.just_pressed(KeyCode::Space);
     if !go {
-        for gamepad in &gamepads {
-            if gamepad.just_pressed(GamepadButton::Start) {
+        for controller in &registry.controllers {
+            if controller.input.pause.just_pressed {
                 go = true;
                 break;
             }
@@ -138,15 +139,15 @@ struct PauseUi;
 
 fn pause_system(
     keyboard: Res<ButtonInput<KeyCode>>,
-    gamepads: Query<&Gamepad>,
+    registry: Res<ControllerRegistry>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if keyboard.just_pressed(KeyCode::Escape) {
         next_state.set(GameState::Paused);
         return;
     }
-    for gamepad in &gamepads {
-        if gamepad.just_pressed(GamepadButton::Start) {
+    for controller in &registry.controllers {
+        if controller.input.pause.just_pressed {
             next_state.set(GameState::Paused);
             return;
         }
@@ -155,15 +156,29 @@ fn pause_system(
 
 fn unpause_system(
     keyboard: Res<ButtonInput<KeyCode>>,
-    gamepads: Query<&Gamepad>,
+    registry: Res<ControllerRegistry>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut exit_events: EventWriter<AppExit>,
 ) {
+    // Exit game check
+    if keyboard.just_pressed(KeyCode::KeyQ) {
+        exit_events.send(AppExit::Success);
+        return;
+    }
+    for controller in &registry.controllers {
+        if controller.input.exit_game.just_pressed {
+            exit_events.send(AppExit::Success);
+            return;
+        }
+    }
+
+    // Resume check
     if keyboard.just_pressed(KeyCode::Escape) || keyboard.just_pressed(KeyCode::Space) {
         next_state.set(GameState::Playing);
         return;
     }
-    for gamepad in &gamepads {
-        if gamepad.just_pressed(GamepadButton::Start) {
+    for controller in &registry.controllers {
+        if controller.input.pause.just_pressed {
             next_state.set(GameState::Playing);
             return;
         }
@@ -201,6 +216,14 @@ fn setup_pause_menu(mut commands: Commands) {
                     ..default()
                 },
                 TextColor(Color::srgb(0.7, 0.7, 0.7)),
+            ));
+            parent.spawn((
+                Text::new("Press SELECT or Q to Exit Game"),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.9, 0.3, 0.3)),
             ));
         });
 }

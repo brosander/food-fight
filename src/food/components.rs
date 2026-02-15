@@ -1,3 +1,10 @@
+//! Food and launcher entity components.
+//!
+//! Data flow: `FoodType::stats()` → spawn with `FoodItem` + `Throwable` (on ground).
+//! On pickup: moved into `Inventory::held_food`. On throw: spawned as `InFlight`
+//! (straight/arc/bounce) with damage copied from `FoodStats`. `InFlight` is what
+//! combat reads — `FoodItem::damage` is never queried post-spawn.
+
 use bevy::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -93,7 +100,8 @@ pub struct FoodStats {
     pub damage: f32,
     pub speed: f32,
     pub trajectory: TrajectoryKind,
-    pub color: Color,
+    #[allow(dead_code)]
+    pub color: Color, // used to tint sprite; read at spawn time only
     pub size: Vec2,
 }
 
@@ -108,7 +116,8 @@ pub enum TrajectoryKind {
 #[derive(Component)]
 pub struct FoodItem {
     pub food_type: FoodType,
-    pub damage: f32,
+    #[allow(dead_code)]
+    pub damage: f32, // copied into InFlight::damage at throw time; combat reads InFlight
 }
 
 /// Marker: this food is on the ground and can be picked up.

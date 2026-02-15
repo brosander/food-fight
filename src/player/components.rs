@@ -1,4 +1,12 @@
+//! Player entity components.
+//!
+//! Core bundle: `Player` + `Health` + `Velocity` + `Score` + `ControllerLink` +
+//! `ControllerInput`. `ControllerLink` binds the entity to a specific controller;
+//! `ControllerInput` is populated each frame by the active input backend.
+
 use bevy::prelude::*;
+
+use crate::input::ControllerId;
 
 #[derive(Component)]
 pub struct Player {
@@ -13,8 +21,8 @@ pub struct Health(pub f32);
 pub struct Velocity(pub Vec2);
 
 #[derive(Component)]
-pub struct Score(pub i32);
+pub struct Score(#[allow(dead_code)] pub i32); // planned: scoring UI not yet wired up
 
-/// Links this player to a specific gamepad entity for input.
+/// Links this player to a specific controller for input.
 #[derive(Component)]
-pub struct GamepadLink(pub Entity);
+pub struct ControllerLink(pub ControllerId);

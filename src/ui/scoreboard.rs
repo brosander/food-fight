@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::input::ControllerRegistry;
 use crate::player::components::{Health, Player};
 use crate::states::GameState;
 
@@ -67,14 +68,14 @@ pub fn setup_round_over(mut commands: Commands, players: Query<(&Player, &Health
 pub fn round_over_system(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
-    gamepads: Query<&Gamepad>,
+    registry: Res<ControllerRegistry>,
     mut next_state: ResMut<NextState<GameState>>,
     ui_query: Query<Entity, With<RoundOverUi>>,
 ) {
     let mut go = keyboard.just_pressed(KeyCode::Space);
     if !go {
-        for gamepad in &gamepads {
-            if gamepad.just_pressed(GamepadButton::Start) {
+        for controller in &registry.controllers {
+            if controller.input.pause.just_pressed {
                 go = true;
                 break;
             }

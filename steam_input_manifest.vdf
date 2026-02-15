@@ -1,0 +1,92 @@
+"In Game Actions"
+{
+	"actions"
+	{
+		"GameplayControls"
+		{
+			"title"		"#Set_GameplayControls"
+			"StickPadGyro"
+			{
+				"move"
+				{
+					"title"			"#Action_Move"
+					"input_mode"	"joystick_move"
+				}
+				"aim"
+				{
+					"title"			"#Action_Aim"
+					"input_mode"	"joystick_camera"
+				}
+			}
+			"Button"
+			{
+				"pickup_food"
+				{
+					"title"		"#Action_PickupFood"
+				}
+				"pickup_launcher"
+				{
+					"title"		"#Action_PickupLauncher"
+				}
+				"fire"
+				{
+					"title"		"#Action_Fire"
+				}
+				"pause"
+				{
+					"title"		"#Action_Pause"
+				}
+			}
+		}
+		"MenuControls"
+		{
+			"title"		"#Set_MenuControls"
+			"StickPadGyro"
+			{
+				"menu_navigate"
+				{
+					"title"			"#Action_Navigate"
+					"input_mode"	"joystick_move"
+				}
+			}
+			"Button"
+			{
+				"join"
+				{
+					"title"		"#Action_Join"
+				}
+				"leave"
+				{
+					"title"		"#Action_Leave"
+				}
+				"pause"
+				{
+					"title"		"#Action_Start"
+				}
+				"exit_game"
+				{
+					"title"		"#Action_Exit"
+				}
+			}
+		}
+	}
+	"localization"
+	{
+		"english"
+		{
+			"Set_GameplayControls"		"Gameplay"
+			"Set_MenuControls"			"Menus"
+			"Action_Move"				"Move"
+			"Action_Aim"				"Aim"
+			"Action_PickupFood"			"Pick Up Food"
+			"Action_PickupLauncher"		"Pick Up Launcher"
+			"Action_Fire"				"Throw / Fire"
+			"Action_Pause"				"Pause"
+			"Action_Navigate"			"Navigate"
+			"Action_Join"				"Join / Select"
+			"Action_Leave"				"Leave / Back"
+			"Action_Start"				"Start / Ready"
+			"Action_Exit"				"Exit Game"
+		}
+	}
+}

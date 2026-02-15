@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 
 use super::components::*;
-use crate::controller::read_aim_direction;
-use crate::player::components::GamepadLink;
+use crate::input::ControllerInput;
 use crate::sprites::{AnimationState, FrameRange, SpriteAssets, food_atlas_index, food_type_row};
 use crate::states::Gameplay;
 
@@ -11,20 +10,15 @@ const PICKUP_RANGE: f32 = 40.0;
 /// Pickup system: when player presses South (A/Cross) near a Throwable food, add it to inventory.
 pub fn pickup_system(
     mut commands: Commands,
-    gamepads: Query<&Gamepad>,
-    players: Query<(Entity, &Transform, &GamepadLink, &Inventory)>,
+    players: Query<(Entity, &Transform, &ControllerInput, &Inventory)>,
     food_items: Query<(Entity, &Transform, &FoodItem), With<Throwable>>,
 ) {
-    for (player_entity, player_tf, link, inventory) in &players {
+    for (player_entity, player_tf, input, inventory) in &players {
         if inventory.held_food.is_some() {
             continue;
         }
 
-        let Ok(gamepad) = gamepads.get(link.0) else {
-            continue;
-        };
-
-        if !gamepad.just_pressed(GamepadButton::South) {
+        if !input.pickup_food.just_pressed {
             continue;
         }
 
@@ -54,24 +48,19 @@ pub fn pickup_system(
 /// Throw system: Right trigger to throw, right stick (or left stick fallback) to aim.
 pub fn throw_system(
     mut commands: Commands,
-    gamepads: Query<&Gamepad>,
-    players: Query<(Entity, &Transform, &GamepadLink, &Inventory)>,
+    players: Query<(Entity, &Transform, &ControllerInput, &Inventory)>,
     sprite_assets: Res<SpriteAssets>,
 ) {
-    for (player_entity, player_tf, link, inventory) in &players {
+    for (player_entity, player_tf, input, inventory) in &players {
         let Some(food_type) = &inventory.held_food else {
             continue;
         };
 
-        let Ok(gamepad) = gamepads.get(link.0) else {
-            continue;
-        };
-
-        if !gamepad.just_pressed(GamepadButton::RightTrigger2) {
+        if !input.fire.just_pressed {
             continue;
         }
 
-        let aim_direction = read_aim_direction(gamepad);
+        let aim_direction = input.aim_direction();
         if aim_direction == Vec2::ZERO {
             continue;
         }

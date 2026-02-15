@@ -1,3 +1,9 @@
+//! NPC entity components.
+//!
+//! `NpcState` drives the state machine: Patrolling → Suspicious → Chasing → Returning.
+//! `NpcAuthority` holds detection parameters (radius, FOV angle, catch radius).
+//! `Caught` is applied to *players* caught by an NPC, not to the NPC itself.
+
 use bevy::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -5,7 +11,8 @@ pub enum NpcRole {
     Teacher,
     Principal,
     LunchLady,
-    Janitor,
+    #[allow(dead_code)]
+    Janitor, // planned fourth NPC role
 }
 
 #[derive(Component)]

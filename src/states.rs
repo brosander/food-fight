@@ -1,3 +1,5 @@
+//! Game state enum and session lifecycle marker components.
+
 use bevy::prelude::*;
 
 #[derive(States, Debug, Clone, Eq, PartialEq, Hash, Default)]
@@ -5,8 +7,10 @@ pub enum GameState {
     #[default]
     MainMenu,
     Lobby,
-    MapSelect,
-    Loading,
+    #[allow(dead_code)]
+    MapSelect, // planned: map selection screen
+    #[allow(dead_code)]
+    Loading, // planned: async asset loading screen
     Playing,
     Paused,
     RoundOver,

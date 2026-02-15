@@ -1,3 +1,9 @@
+//! Gamepad utilities and connection event handling (gilrs backend).
+//!
+//! Provides `read_left_stick` and `read_right_stick` (used by `input::gilrs_populate_system`),
+//! disconnect-to-pause behaviour, and raw event debug logging (gated on `Level::DEBUG`).
+//! Also holds `ControllerFamily` and button-label helpers for future glyph-display UI.
+
 use bevy::input::gamepad::{
     GamepadAxisChangedEvent, GamepadButtonChangedEvent, GamepadConnection, GamepadConnectionEvent,
 };
@@ -7,6 +13,9 @@ use bevy::utils::tracing::enabled;
 
 use crate::states::GameState;
 
+/// Controller family detection — used for button glyph display (planned HUD feature).
+// Suppressed until the HUD shows context-sensitive button prompts.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ControllerFamily {
     Xbox,
@@ -15,6 +24,7 @@ pub enum ControllerFamily {
     Unknown,
 }
 
+#[allow(dead_code)]
 pub fn detect_controller_family(name: &str) -> ControllerFamily {
     let name_lower = name.to_lowercase();
     if name_lower.contains("xbox") || name_lower.contains("xinput") {
@@ -37,6 +47,7 @@ pub fn detect_controller_family(name: &str) -> ControllerFamily {
     }
 }
 
+#[allow(dead_code)]
 pub fn south_button_label(family: ControllerFamily) -> &'static str {
     match family {
         ControllerFamily::Xbox => "A",
@@ -46,6 +57,7 @@ pub fn south_button_label(family: ControllerFamily) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 pub fn east_button_label(family: ControllerFamily) -> &'static str {
     match family {
         ControllerFamily::Xbox => "B",
@@ -55,6 +67,7 @@ pub fn east_button_label(family: ControllerFamily) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 pub fn west_button_label(family: ControllerFamily) -> &'static str {
     match family {
         ControllerFamily::Xbox => "X",
@@ -64,6 +77,7 @@ pub fn west_button_label(family: ControllerFamily) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 pub fn start_button_label(family: ControllerFamily) -> &'static str {
     match family {
         ControllerFamily::Xbox => "Menu",
@@ -174,6 +188,8 @@ pub fn read_right_stick(gamepad: &Gamepad) -> Vec2 {
 }
 
 /// Compute aim direction from right stick, falling back to left stick (movement direction).
+/// Note: prefer `ControllerInput::aim_direction()` in gameplay systems.
+#[allow(dead_code)]
 pub fn read_aim_direction(gamepad: &Gamepad) -> Vec2 {
     let right = read_right_stick(gamepad);
     if right != Vec2::ZERO {

@@ -1,3 +1,9 @@
+//! Sprite assets, frame-based animation, and NPC visual state feedback.
+//!
+//! `SpritePlugin` loads player sprite atlases at startup and runs animation systems
+//! in `FixedUpdate`. `AnimationState` drives frame selection from named `FrameRange`s.
+//! NPC color changes (yellow=suspicious, red=chasing) also live here.
+
 use bevy::prelude::*;
 
 use crate::food::components::{FoodType, Inventory};
@@ -64,7 +70,7 @@ impl AnimationState {
 }
 
 #[derive(Component)]
-pub struct PlayerSpriteId(pub u8);
+pub struct PlayerSpriteId(#[allow(dead_code)] pub u8); // indexes into SpriteAssets::player_images
 
 // --- Resource ---
 

@@ -1,3 +1,8 @@
+//! In-game HUD: health bars and player status text.
+//!
+//! `setup_hud` spawns one health-bar group per lobby slot. `update_hud` runs each
+//! frame, matching `HealthBarFill::player_id` to `Player::id` to set bar width.
+
 use bevy::prelude::*;
 
 use crate::food::components::Inventory;
@@ -11,7 +16,8 @@ pub struct HudRoot;
 
 #[derive(Component)]
 pub struct HealthBar {
-    pub player_id: u8,
+    #[allow(dead_code)]
+    pub player_id: u8, // stored for future direct HealthBar queries; update_hud uses HealthBarFill
 }
 
 #[derive(Component)]

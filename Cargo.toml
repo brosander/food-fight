@@ -6,9 +6,13 @@ description = "Chaotic 2D multiplayer food fight for 1–4 players, built with R
 authors = ["Bryan Rosander"]
 license = "LicenseRef-PolyForm-Noncommercial-1.0.0"
 
+[features]
+steam = ["dep:steamworks"]
+
 [dependencies]
 bevy = "0.15"
 rand = "0.8"
+steamworks = { version = "0.12", optional = true, features = ["raw-bindings"] }
 
 [profile.dev]
 opt-level = 1
