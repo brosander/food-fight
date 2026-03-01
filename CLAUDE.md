@@ -1,5 +1,7 @@
 # Cafeteria Food Fight
 
+**Git commits:** Do not add Claude as a co-author. No `Co-Authored-By` trailers.
+
 2D top-down multiplayer food fight game. Students battle with food in a school cafeteria while avoiding patrolling NPC authority figures. Built with Rust + Bevy 0.15.
 
 ## Tech Stack
