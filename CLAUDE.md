@@ -203,15 +203,39 @@ Procedural cafeteria: 960x640 play area centered at origin. Bounds: ±480 x, ±3
 
 ## Assets
 
-Sprite atlas loaded from `assets/sprites/players/player{0-3}.png`. NPCs and food still render as colored rectangles.
+All gameplay entities use sprite atlases loaded from `assets/sprites/`. The map still uses procedural colored rectangles (no tilemap).
 
-All entities currently render as colored rectangles except players:
-- Players: 32x32, sprite atlas from lobby slot color
-- NPCs: 28-32px, color by role (Teacher=tan, Principal=blue, LunchLady=pink)
-- Food: 6-16px, color by type (Pizza=yellow, Meatball=brown, Jello=green, etc.)
-- Launchers: 6-20px, color by type
-- Map: floor=dark brown, walls=brown, tables=tan, counter=beige
-- NPC visual feedback overrides color: yellow when suspicious, red when chasing
+### Sprite Atlases
+
+- **Players** (`sprites/players/player_{blue,red,green,yellow}.png`) — 32x32, 8×4 grid
+  - Rows: walk_down (0), walk_up (1), walk_left (2), walk_right (3)
+  - Cols 0–3: walk frames (8fps), 4–5: idle (3fps), 6–7: stunned (4fps)
+  - Row 3 cols 4–5: holding_food idle (3fps)
+  - Helper: `player_atlas_index(row, col)` (8 columns)
+
+- **Teacher** (`sprites/npcs/teacher.png`) — 32x32, 7×4 grid
+- **Principal** (`sprites/npcs/principal.png`) — 32x32, 7×4 grid
+  - Both share `npc_standard_animation_for()`: rows 0–2 = patrol/suspicious/chase, 4 directions per row; row 3 = returning
+  - Helper: `atlas_index(row, col, 7)`
+
+- **Lunch Lady** (`sprites/npcs/lunch_lady.png`) — 32x32, 6×3 grid
+  - Row 0: idle_stir (2fps), Row 1: suspicious_stir (2fps), Row 2: swing_left / swing_right (6fps)
+
+- **Food** (`sprites/food/food_items.png`) — 16x16, 8×8 grid
+  - One row per food type (see `food_type_row()`): Pizza=0, Meatball=1, Jello=2, Grape=3, MilkCarton=4, Spaghetti=5, BananaPeel=6, MysteryMeat=7
+  - Helper: `food_atlas_index(row, col)` (8 columns)
+
+- **Launchers** (`sprites/launchers/launchers.png`) — 32x32, 5×6 grid
+  - One row per launcher type (see `launcher_type_row()`): Slingshot=0, KetchupGun=1, SporkLauncher=2, LunchTrayCatapult=3, StrawBlowgun=4, WatermelonCatapult=5
+  - Helper: `launcher_atlas_index(row, col)` (5 columns)
+
+- **Effects** (`sprites/effects/effects.png`) — 32x32, 6×3 grid
+  - Row 1: splat decals by food type — col 0=red, 1=green, 2=purple, 3=white, 4=yellow, 5=brown
+  - `food_splat_index(food_type)` maps food type → correct splat column
+  - Helper: `effects_atlas_index(row, col)` (6 columns)
+
+### Map
+Procedural colored rectangles: floor=dark brown, walls=brown, tables=tan, counter=beige, door markers=lighter brown.
 
 ## Constants & Play Area
 
@@ -219,7 +243,7 @@ All entities currently render as colored rectangles except players:
 - Player size: 32x32 (half_size=16 for collision)
 - Player speed: 200 px/s
 - Wall thickness: 16px
-- Pickup range: 40px
+- Pickup range: 70px
 - Food spawn respawn: 5 seconds
 - Launcher spawn: 1 point at center (0,0), 20-second respawn
 - Projectile max range: 400-600px
@@ -249,11 +273,11 @@ All entities currently render as colored rectangles except players:
 - [x] Phase 5: NPCs (3 roles, state machine, detection, chase, catch, penalties)
 - [x] Phase 6: Game flow & UI (menus, HUD, pause, round over, lobby)
 - [x] Input abstraction: ControllerInput/ControllerRegistry, gilrs + Steam Input backends
-- [x] Steam Deck: borderless fullscreen on Linux, steamdeck.sh setup script
-- [ ] Sprite art: players have atlas sprites; NPCs/food are still colored rectangles
+- [x] Steam Deck: Gaming Mode launch via steam-launch.sh, steamdeck.sh build helper
+- [x] Sprite art: players, NPCs (Teacher/Principal/LunchLady), food, launchers, effects — all atlased
 - [ ] Audio: none
 - [ ] Additional maps: only cafeteria
-- [ ] Polish: no particles, screen shake, or animations beyond scale-pulse
+- [ ] Polish: no particles or screen shake
 
 ## Bevy 0.15 API Notes
 
@@ -284,7 +308,6 @@ These are different from older `steamworks-rs` examples you'll find online:
 
 ## Reference Docs
 
-- `PLAN.md` — original phased implementation plan with component designs and acceptance criteria
 - `MACBOOK.md` — guide for Bluetooth controller support on macOS
 - `STEAMDECK.md` — Steam Deck deployment guide
 - `steamdeck.sh` — automated setup/build/run script for Steam Deck desktop mode
