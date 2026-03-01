@@ -3,12 +3,12 @@ use bevy::prelude::*;
 use super::components::*;
 use crate::food::components::InFlight;
 use crate::food::launcher::EquippedLauncher;
-use crate::player::components::Player;
+use crate::player::components::{Eliminated, Player};
 
 /// Teachers immediately chase any player holding a launcher, bypassing cone/distance checks.
 pub fn teacher_launcher_alert_system(
     mut npcs: Query<(&NpcAuthority, &mut NpcState, &Transform)>,
-    players: Query<(Entity, &Transform), (With<Player>, With<EquippedLauncher>)>,
+    players: Query<(Entity, &Transform), (With<Player>, With<EquippedLauncher>, Without<Eliminated>)>,
 ) {
     for (npc, mut state, npc_tf) in &mut npcs {
         if npc.role != NpcRole::Teacher {
@@ -34,7 +34,7 @@ pub fn teacher_launcher_alert_system(
 /// or are holding a weapon.
 pub fn suspicion_system(
     mut commands: Commands,
-    players: Query<(Entity, Option<&EquippedLauncher>), With<Player>>,
+    players: Query<(Entity, Option<&EquippedLauncher>), (With<Player>, Without<Eliminated>)>,
     projectiles: Query<&InFlight>,
 ) {
     for (player_entity, launcher) in &players {
@@ -55,7 +55,7 @@ pub fn suspicion_system(
 pub fn detection_system(
     time: Res<Time>,
     mut npcs: Query<(&NpcAuthority, &mut NpcState, &Transform, &Facing, &PatrolPath)>,
-    players: Query<(Entity, &Transform), (With<Player>, With<Suspicious>)>,
+    players: Query<(Entity, &Transform), (With<Player>, With<Suspicious>, Without<Eliminated>)>,
 ) {
     for (npc, mut state, npc_tf, facing, path) in &mut npcs {
         match state.as_mut() {
@@ -122,7 +122,7 @@ fn find_visible_target(
     npc_facing: Vec2,
     radius: f32,
     half_angle: f32,
-    players: &Query<(Entity, &Transform), (With<Player>, With<Suspicious>)>,
+    players: &Query<(Entity, &Transform), (With<Player>, With<Suspicious>, Without<Eliminated>)>,
 ) -> Option<(Entity, Vec2)> {
     let mut closest: Option<(Entity, Vec2, f32)> = None;
 

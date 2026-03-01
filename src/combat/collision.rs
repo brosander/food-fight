@@ -2,41 +2,45 @@ use bevy::prelude::*;
 
 use crate::audio::SoundEvent;
 use crate::food::components::*;
-use crate::player::components::{Health, Player};
+use crate::food::launcher::{ChargingShot, EquippedLauncher};
+use crate::player::components::{Eliminated, Health, Player};
 use crate::sprites::{AnimationState, FrameRange, SpriteAssets, effects_atlas_index};
 use crate::states::Gameplay;
 
 const PLAYER_HALF_SIZE: f32 = 16.0;
 
 /// AABB collision between InFlight food and Player entities.
-/// Skips the player who threw the food.
+/// Skips the thrower and already-eliminated players.
+/// When a player's health hits zero they are marked Eliminated and banished to their corner.
 pub fn food_player_collision_system(
     mut commands: Commands,
     mut sound: EventWriter<SoundEvent>,
     projectiles: Query<(Entity, &Transform, &InFlight)>,
-    mut players: Query<(Entity, &Transform, &mut Health), With<Player>>,
+    mut players: Query<(Entity, &Transform, &mut Health, Option<&Eliminated>), With<Player>>,
     sprite_assets: Res<SpriteAssets>,
 ) {
     for (proj_entity, proj_tf, flight) in &projectiles {
         let proj_pos = proj_tf.translation.truncate();
-        let proj_half = Vec2::new(6.0, 6.0); // Approximate projectile half-size
+        let proj_half = Vec2::new(6.0, 6.0);
 
-        for (player_entity, player_tf, mut health) in &mut players {
-            // Don't hit the thrower
+        for (player_entity, player_tf, mut health, eliminated) in &mut players {
             if player_entity == flight.thrown_by {
+                continue;
+            }
+
+            // Eliminated players can't be hit
+            if eliminated.is_some() {
                 continue;
             }
 
             let player_pos = player_tf.translation.truncate();
 
-            // AABB overlap check
             if aabb_overlap(
                 proj_pos,
                 proj_half,
                 player_pos,
                 Vec2::splat(PLAYER_HALF_SIZE),
             ) {
-                // Apply damage
                 health.0 = (health.0 - flight.damage).max(0.0);
                 sound.send(SoundEvent::FoodHit);
 
@@ -72,8 +76,19 @@ pub fn food_player_collision_system(
                     Gameplay,
                 ));
 
-                // Despawn projectile
                 commands.entity(proj_entity).despawn();
+
+                // Eliminate the player if health just hit zero
+                if health.0 == 0.0 {
+                    commands
+                        .entity(player_entity)
+                        .insert(Eliminated)
+                        .insert(Inventory { held_food: None })
+                        .remove::<EquippedLauncher>()
+                        .remove::<ChargingShot>();
+                    // detention_system will snap them to their corner next tick
+                }
+
                 break;
             }
         }

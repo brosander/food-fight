@@ -4,6 +4,8 @@
 
 **Keep this file up to date.** When adding new systems, files, plugins, constants, or architectural patterns, update the relevant sections here before finishing the work.
 
+**Update README.md when finishing any task.** Keep the gameplay description and project status checklist current — add features to the bullet list, tick completed items, and remove anything that's no longer accurate.
+
 2D top-down multiplayer food fight game. Students battle with food in a school cafeteria while avoiding patrolling NPC authority figures. Built with Rust + Bevy 0.15.
 
 ## Tech Stack
@@ -196,6 +198,26 @@ Players are NOT hardcoded. The `Lobby` resource (`Vec<PlayerSlot>`) manages join
 ### Launcher Spawning
 
 Single spawn point at map center (0, 0). One launcher spawns immediately on game start. After pickup (or uses exhausted), a new random launcher respawns after **20 seconds**. Implemented via `LauncherSpawnPoint` component (mirrors `FoodSpawnPoint` pattern): `active=true` while pickup present, `reset_launcher_spawn_point_system` detects pickup gone → starts timer, `launcher_respawn_system` fires when timer finishes.
+
+### Elimination & Detention
+
+When a player's health hits zero they are eliminated:
+
+1. `Eliminated` marker component added; `EquippedLauncher`, `ChargingShot`, and held food removed.
+2. `detention_system` (runs after `movement_system`) snaps them to their corner table and zeroes velocity every tick.
+3. Eliminated players are excluded from food/launcher pickup & throw, NPC detection/chase/catch, and projectile collision.
+4. Win condition: ≤1 non-eliminated player remaining (among ≥2 total) → `RoundOver`. Surviving player wins.
+
+**Corner assignment** (`DETENTION_CORNERS` in `player/components.rs`, indexed by `player.id - 1`):
+
+| Player | Corner | Position |
+|--------|--------|----------|
+| 1 | Bottom-left | (-400, -260) |
+| 2 | Bottom-right | (400, -260) |
+| 3 | Top-left | (-400, 260) |
+| 4 | Top-right | (400, 260) |
+
+Corner tables are visual-only sprites (no `Wall` component) in `map/loading.rs`.
 
 ### NPC State Machine
 

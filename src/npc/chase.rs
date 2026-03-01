@@ -4,13 +4,13 @@ use super::components::*;
 use crate::audio::SoundEvent;
 use crate::food::components::Inventory;
 use crate::food::launcher::EquippedLauncher;
-use crate::player::components::Player;
+use crate::player::components::{Eliminated, Player};
 
 /// Chasing NPC moves toward target player.
 pub fn chase_system(
     time: Res<Time>,
     mut npcs: Query<(&NpcAuthority, &NpcState, &mut Transform, &mut Facing)>,
-    players: Query<&Transform, (With<Player>, Without<NpcAuthority>)>,
+    players: Query<&Transform, (With<Player>, Without<NpcAuthority>, Without<Eliminated>)>,
 ) {
     for (npc, state, mut npc_tf, mut facing) in &mut npcs {
         let NpcState::Chasing { target } = state else {
@@ -40,7 +40,7 @@ pub fn catch_system(
     mut commands: Commands,
     mut sound: EventWriter<SoundEvent>,
     npcs: Query<(&NpcAuthority, &NpcState, &Transform)>,
-    players: Query<(Entity, &Transform, Option<&Caught>), With<Player>>,
+    players: Query<(Entity, &Transform, Option<&Caught>), (With<Player>, Without<Eliminated>)>,
 ) {
     for (npc, state, npc_tf) in &npcs {
         let NpcState::Chasing { target } = state else {

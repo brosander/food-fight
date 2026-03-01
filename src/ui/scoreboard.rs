@@ -1,34 +1,37 @@
 use bevy::prelude::*;
 
 use crate::input::ControllerRegistry;
-use crate::player::components::{Health, Player};
+use crate::player::components::{Eliminated, Player};
 use crate::states::GameState;
 
 #[derive(Component)]
 pub struct RoundOverUi;
 
-/// Checks win condition: first player to reach 0 health loses.
+/// Checks win condition: last player standing (everyone else eliminated).
 pub fn win_check_system(
     mut next_state: ResMut<NextState<GameState>>,
-    players: Query<(&Player, &Health)>,
+    players: Query<Option<&Eliminated>, With<Player>>,
 ) {
-    for (_player, health) in &players {
-        if health.0 <= 0.0 {
-            next_state.set(GameState::RoundOver);
-            return;
-        }
+    let total = players.iter().count();
+    if total < 2 {
+        return;
+    }
+    let alive = players.iter().filter(|e| e.is_none()).count();
+    if alive <= 1 {
+        next_state.set(GameState::RoundOver);
     }
 }
 
-pub fn setup_round_over(mut commands: Commands, players: Query<(&Player, &Health)>) {
-    let mut winner_id = 0u8;
-    let mut max_health = -1.0f32;
-    for (player, health) in &players {
-        if health.0 > max_health {
-            max_health = health.0;
-            winner_id = player.id;
-        }
-    }
+pub fn setup_round_over(mut commands: Commands, players: Query<(&Player, Option<&Eliminated>)>) {
+    let winner = players
+        .iter()
+        .find(|(_, elim)| elim.is_none())
+        .map(|(p, _)| p.id);
+
+    let title = match winner {
+        Some(id) => format!("Player {} wins!", id),
+        None => "Draw!".to_string(),
+    };
 
     commands
         .spawn((
@@ -46,7 +49,7 @@ pub fn setup_round_over(mut commands: Commands, players: Query<(&Player, &Health
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new(format!("Player {} wins!", winner_id)),
+                Text::new(title),
                 TextFont {
                     font_size: 48.0,
                     ..default()

@@ -26,3 +26,16 @@ pub struct Score(#[allow(dead_code)] pub i32); // planned: scoring UI not yet wi
 /// Links this player to a specific controller for input.
 #[derive(Component)]
 pub struct ControllerLink(pub ControllerId);
+
+/// Marker for a player who has been eliminated and banished to a corner detention table.
+#[derive(Component)]
+pub struct Eliminated;
+
+/// World positions of the 4 corner detention tables, indexed by player.id - 1.
+/// Order: bottom-left, bottom-right, top-left, top-right.
+pub const DETENTION_CORNERS: [Vec2; 4] = [
+    Vec2::new(-400.0, -260.0),
+    Vec2::new(400.0, -260.0),
+    Vec2::new(-400.0, 260.0),
+    Vec2::new(400.0, 260.0),
+];

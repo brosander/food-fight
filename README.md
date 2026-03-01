@@ -16,6 +16,7 @@ Built with Rust and Bevy 0.15. Native on macOS and Steam Deck.
   - **Teacher** — immediately hunts down whoever picks up a launcher, no questions asked
   - **Principal** — wide detection cone, long stun if caught
   - **Lunch Lady** — stationary at the counter but watching
+- **Elimination & lunch detention** — when a player's health hits zero they are banished to a corner table for the rest of the round. Each corner has a dedicated detention seat (one per player). Eliminated players can't move, throw, or interact — they just sit there watching.
 - Last player standing wins the round
 
 Controls are fully gamepad-driven. Plug in Xbox 360 / Xbox One / PS4 / PS5 / Switch Pro controllers and press **A (South)** to join the lobby.
@@ -124,7 +125,8 @@ The core game loop is complete and playable.
 - [x] NPC state machines (patrol → suspicious → chase → catch)
 - [x] Dynamic lobby (1–4 players, press to join)
 - [x] Full game flow: menu → lobby → playing → round over
+- [x] Elimination & lunch detention (corner tables, last player standing wins)
 - [x] Steam Deck Gaming Mode support
 - [x] Sprite art for players, NPCs, food, launchers, effects, UI
-- [ ] Audio
+- [x] Audio
 - [ ] Additional maps

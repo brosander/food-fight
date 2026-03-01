@@ -15,6 +15,7 @@ impl Plugin for PlayerPlugin {
             (
                 input::input_system,
                 movement::movement_system,
+                movement::detention_system,
             )
                 .chain()
                 .run_if(in_state(GameState::Playing)),

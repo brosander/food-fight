@@ -91,6 +91,26 @@ pub fn spawn_cafeteria(mut commands: Commands) {
         wall_color,
     );
 
+    // === Corner detention tables (visual only, no collision) ===
+    // One per corner for lunch detention — players are banished here when eliminated.
+    let detention_color = Color::srgb(0.45, 0.28, 0.15);
+    for pos in [
+        Vec3::new(-400.0, -260.0, 0.0), // bottom-left
+        Vec3::new(400.0, -260.0, 0.0),  // bottom-right
+        Vec3::new(-400.0, 260.0, 0.0),  // top-left
+        Vec3::new(400.0, 260.0, 0.0),   // top-right
+    ] {
+        commands.spawn((
+            Sprite {
+                color: detention_color,
+                custom_size: Some(Vec2::new(80.0, 50.0)),
+                ..default()
+            },
+            Transform::from_translation(pos),
+            Gameplay,
+        ));
+    }
+
     // Door openings (spawn locations for players) — marked by colored floor tiles
     let door_color = Color::srgb(0.3, 0.35, 0.28);
     commands.spawn((

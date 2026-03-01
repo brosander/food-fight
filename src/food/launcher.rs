@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use super::components::*;
 use crate::audio::SoundEvent;
 use crate::input::ControllerInput;
+use crate::player::components::Eliminated;
 use crate::sprites::{AnimationState, FrameRange, SpriteAssets, launcher_atlas_index, launcher_type_row};
 use crate::states::Gameplay;
 
@@ -239,7 +240,7 @@ const PICKUP_RANGE: f32 = 70.0;
 pub fn launcher_pickup_system(
     mut commands: Commands,
     mut sound: EventWriter<SoundEvent>,
-    players: Query<(Entity, &Transform, &ControllerInput, Option<&EquippedLauncher>)>,
+    players: Query<(Entity, &Transform, &ControllerInput, Option<&EquippedLauncher>), Without<Eliminated>>,
     launchers: Query<(Entity, &Transform, &LauncherPickup)>,
 ) {
     for (player_entity, player_tf, input, equipped) in &players {
@@ -290,7 +291,7 @@ pub fn launcher_fire_system(
         &ControllerInput,
         &mut EquippedLauncher,
         Option<&ChargingShot>,
-    )>,
+    ), Without<Eliminated>>,
 ) {
     for (player_entity, player_tf, input, mut launcher, _charging) in &mut players {
         launcher.cooldown_timer.tick(time.delta());
@@ -398,7 +399,7 @@ pub fn catapult_charge_system(
         &ControllerInput,
         &mut EquippedLauncher,
         Option<&mut ChargingShot>,
-    )>,
+    ), Without<Eliminated>>,
 ) {
     for (player_entity, player_tf, input, mut launcher, mut charging) in &mut players {
         if launcher.launcher_type != LauncherType::LunchTrayCatapult {

@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use super::components::*;
 use crate::audio::SoundEvent;
 use crate::input::ControllerInput;
+use crate::player::components::Eliminated;
 use crate::sprites::{AnimationState, FrameRange, SpriteAssets, food_atlas_index, food_type_row};
 use crate::states::Gameplay;
 
@@ -12,7 +13,7 @@ const PICKUP_RANGE: f32 = 70.0;
 pub fn pickup_system(
     mut commands: Commands,
     mut sound: EventWriter<SoundEvent>,
-    players: Query<(Entity, &Transform, &ControllerInput, &Inventory)>,
+    players: Query<(Entity, &Transform, &ControllerInput, &Inventory), Without<Eliminated>>,
     food_items: Query<(Entity, &Transform, &FoodItem), With<Throwable>>,
 ) {
     for (player_entity, player_tf, input, inventory) in &players {
@@ -50,7 +51,7 @@ pub fn pickup_system(
 pub fn throw_system(
     mut commands: Commands,
     mut sound: EventWriter<SoundEvent>,
-    players: Query<(Entity, &Transform, &ControllerInput, &Inventory)>,
+    players: Query<(Entity, &Transform, &ControllerInput, &Inventory), Without<Eliminated>>,
     sprite_assets: Res<SpriteAssets>,
 ) {
     for (player_entity, player_tf, input, inventory) in &players {

@@ -3,15 +3,15 @@ use bevy::prelude::*;
 use crate::input::ControllerInput;
 use crate::npc::components::Caught;
 
-use super::components::{Player, Velocity};
+use super::components::{Eliminated, Player, Velocity};
 
 /// Reads controller input and sets player velocity.
-/// Stunned players can't move.
+/// Stunned and eliminated players can't move.
 pub fn input_system(
-    mut query: Query<(&Player, &ControllerInput, &mut Velocity, Option<&Caught>)>,
+    mut query: Query<(&Player, &ControllerInput, &mut Velocity, Option<&Caught>, Option<&Eliminated>)>,
 ) {
-    for (player, input, mut velocity, caught) in &mut query {
-        if caught.is_some() {
+    for (player, input, mut velocity, caught, eliminated) in &mut query {
+        if caught.is_some() || eliminated.is_some() {
             velocity.0 = Vec2::ZERO;
             continue;
         }
