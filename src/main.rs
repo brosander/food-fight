@@ -7,9 +7,9 @@ mod map;
 mod npc;
 mod player;
 mod sprites;
+mod states;
 #[cfg(feature = "steam")]
 mod steam;
-mod states;
 mod ui;
 
 use bevy::prelude::*;
@@ -24,10 +24,8 @@ fn main() {
                 primary_window: Some(Window {
                     title: "Cafeteria Food Fight".to_string(),
                     resolution: window_resolution(),
-                    #[cfg(target_os = "linux")]
-                    mode: bevy::window::WindowMode::Fullscreen(
-                        bevy::window::MonitorSelection::Primary,
-                    ),
+                    #[cfg(feature = "steam")]
+                    mode: bevy::window::WindowMode::Windowed,
                     ..default()
                 }),
                 ..default()
@@ -67,8 +65,7 @@ fn main() {
 fn window_resolution() -> bevy::window::WindowResolution {
     #[cfg(target_os = "linux")]
     {
-        bevy::window::WindowResolution::new(1280.0, 800.0)
-            .with_scale_factor_override(1.0)
+        bevy::window::WindowResolution::new(1280.0, 800.0).with_scale_factor_override(1.0)
     }
     #[cfg(not(target_os = "linux"))]
     {

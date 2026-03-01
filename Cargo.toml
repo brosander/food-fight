@@ -10,7 +10,7 @@ license = "LicenseRef-PolyForm-Noncommercial-1.0.0"
 steam = ["dep:steamworks"]
 
 [dependencies]
-bevy = "0.15"
+bevy = { version = "0.15", features = ["wayland"] }
 rand = "0.8"
 steamworks = { version = "0.12", optional = true, features = ["raw-bindings"] }
 

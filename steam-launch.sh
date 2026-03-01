@@ -6,8 +6,13 @@
 # Build with the Ubuntu 22.04 distrobox (glibc 2.35) so the binary runs
 # directly on the SteamOS host without any container at runtime.
 export BEVY_ASSET_ROOT=/home/deck/foodwars
-# Use Gamescope's native Wayland compositor instead of XWayland.
-# WAYLAND_DISPLAY is not set by default in Gaming Mode but GAMESCOPE_WAYLAND_DISPLAY is.
-# Native Wayland clients get proper focus without the XWayland atom mismatch.
-export WAYLAND_DISPLAY="${GAMESCOPE_WAYLAND_DISPLAY:-gamescope-0}"
+
+# Propagate Steam's shortcut ID to the env var Gamescope WSI reads when
+# associating a Wayland surface with the active game (steam app id in surface state).
+# Steam sets SteamGameId (camelCase); the WSI layer reads STEAM_GAME_ID.
+export STEAM_GAME_ID="${SteamGameId:-0}"
+
+# Dump the Gaming Mode environment so we can see what's actually set.
+#env > /tmp/foodwars-env.log 2>&1
+
 exec /home/deck/foodwars/target/release/food_fight
