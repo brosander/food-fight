@@ -31,10 +31,8 @@ pub fn pickup_system(
                 .translation
                 .truncate()
                 .distance(food_tf.translation.truncate());
-            if dist < PICKUP_RANGE {
-                if nearest.is_none() || dist < nearest.as_ref().unwrap().1 {
-                    nearest = Some((food_entity, dist, food_item.food_type));
-                }
+            if dist < PICKUP_RANGE && (nearest.is_none() || dist < nearest.as_ref().unwrap().1) {
+                nearest = Some((food_entity, dist, food_item.food_type));
             }
         }
 

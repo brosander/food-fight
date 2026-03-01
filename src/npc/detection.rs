@@ -61,27 +61,25 @@ pub fn detection_system(
         match state.as_mut() {
             NpcState::Patrolling { .. } => {
                 // Look for suspicious players in detection cone
-                if let Some((target, pos)) = find_visible_target(
+                if find_visible_target(
                     npc_tf.translation.truncate(),
                     facing.0,
                     npc.detection_radius,
                     npc.detection_angle,
                     &players,
-                ) {
+                )
+                .is_some()
+                {
                     *state = NpcState::Suspicious {
-                        last_seen: pos,
                         timer: Timer::from_seconds(2.0, TimerMode::Once),
                     };
                 }
             }
-            NpcState::Suspicious {
-                ref last_seen,
-                ref mut timer,
-            } => {
+            NpcState::Suspicious { ref mut timer } => {
                 timer.tick(time.delta());
 
                 // Check if we can still see a suspicious player
-                if let Some((target, pos)) = find_visible_target(
+                if let Some((target, _pos)) = find_visible_target(
                     npc_tf.translation.truncate(),
                     facing.0,
                     npc.detection_radius,
@@ -99,7 +97,7 @@ pub fn detection_system(
             }
             NpcState::Chasing { target } => {
                 // Check if we can still see the target (wider radius)
-                let can_see = players.get(*target).map_or(false, |(_, player_tf)| {
+                let can_see = players.get(*target).is_ok_and(|(_, player_tf)| {
                     let dist = npc_tf
                         .translation
                         .truncate()

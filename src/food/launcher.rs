@@ -258,10 +258,8 @@ pub fn launcher_pickup_system(
                 .translation
                 .truncate()
                 .distance(launcher_tf.translation.truncate());
-            if dist < PICKUP_RANGE {
-                if nearest.is_none() || dist < nearest.as_ref().unwrap().1 {
-                    nearest = Some((launcher_entity, dist, pickup.launcher_type));
-                }
+            if dist < PICKUP_RANGE && (nearest.is_none() || dist < nearest.as_ref().unwrap().1) {
+                nearest = Some((launcher_entity, dist, pickup.launcher_type));
             }
         }
 

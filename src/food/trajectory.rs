@@ -158,7 +158,7 @@ fn spawn_splat(
     sprite_assets: &SpriteAssets,
 ) {
     let index = food_type
-        .map(|ft| food_splat_index(ft))
+        .map(food_splat_index)
         .unwrap_or(effects_atlas_index(1, 0)); // default red splat
 
     commands.spawn((

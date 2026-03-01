@@ -1,0 +1,6 @@
+# Clippy configuration for Cafeteria Food Fight
+#
+# type_complexity: Bevy system parameters (Query<(...), (With<A>, With<B>)>) routinely
+# exceed clippy's complexity threshold. Type aliases for one-off Bevy queries add noise
+# without improving readability, so the lint is suppressed project-wide.
+type-complexity-threshold = 500

@@ -28,7 +28,7 @@ pub struct NpcAuthority {
 #[derive(Component)]
 pub enum NpcState {
     Patrolling { waypoint_index: usize },
-    Suspicious { last_seen: Vec2, timer: Timer },
+    Suspicious { timer: Timer },
     Chasing { target: Entity },
     Returning { waypoint_index: usize },
 }
