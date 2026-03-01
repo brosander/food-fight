@@ -5,7 +5,7 @@ use crate::input::ControllerInput;
 use crate::sprites::{AnimationState, FrameRange, SpriteAssets, food_atlas_index, food_type_row};
 use crate::states::Gameplay;
 
-const PICKUP_RANGE: f32 = 40.0;
+const PICKUP_RANGE: f32 = 70.0;
 
 /// Pickup system: when player presses South (A/Cross) near a Throwable food, add it to inventory.
 pub fn pickup_system(

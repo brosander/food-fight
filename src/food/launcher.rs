@@ -232,7 +232,7 @@ pub fn reset_launcher_spawn_point_system(
     }
 }
 
-const PICKUP_RANGE: f32 = 40.0;
+const PICKUP_RANGE: f32 = 70.0;
 
 /// Pickup system for launchers: player presses West (X/Square) near a launcher.
 pub fn launcher_pickup_system(
