@@ -162,6 +162,13 @@ pub struct FoodSpawnPoint {
     pub active: bool,
 }
 
+/// Launcher spawn point marker — single center-map point, 20s respawn.
+#[derive(Component)]
+pub struct LauncherSpawnPoint {
+    pub respawn_timer: Timer,
+    pub active: bool,
+}
+
 /// Splat effect that fades out.
 #[derive(Component)]
 pub struct SplatEffect {

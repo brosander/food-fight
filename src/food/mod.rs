@@ -28,6 +28,8 @@ impl Plugin for FoodPlugin {
                 spawning::reset_spawn_point_system,
                 throwing::pickup_system,
                 throwing::throw_system,
+                launcher::launcher_respawn_system,
+                launcher::reset_launcher_spawn_point_system,
                 launcher::launcher_pickup_system,
                 launcher::launcher_fire_system,
                 launcher::catapult_charge_system,

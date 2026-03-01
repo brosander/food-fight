@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::components::*;
 use crate::input::ControllerInput;
-use crate::sprites::{SpriteAssets, launcher_atlas_index, launcher_type_row};
+use crate::sprites::{AnimationState, FrameRange, SpriteAssets, launcher_atlas_index, launcher_type_row};
 use crate::states::Gameplay;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -12,6 +12,7 @@ pub enum LauncherType {
     SporkLauncher,
     LunchTrayCatapult,
     StrawBlowgun,
+    WatermelonCatapult,
 }
 
 impl LauncherType {
@@ -25,6 +26,7 @@ impl LauncherType {
                 uses: 10,
                 color: Color::srgb(0.6, 0.4, 0.2),
                 size: Vec2::new(16.0, 16.0),
+                projectile_size: Vec2::new(6.0, 6.0),
             },
             LauncherType::KetchupGun => LauncherStats {
                 cooldown_secs: 0.08,
@@ -34,6 +36,7 @@ impl LauncherType {
                 uses: 40,
                 color: Color::srgb(0.9, 0.1, 0.1),
                 size: Vec2::new(18.0, 12.0),
+                projectile_size: Vec2::new(6.0, 6.0),
             },
             LauncherType::SporkLauncher => LauncherStats {
                 cooldown_secs: 0.3,
@@ -43,6 +46,7 @@ impl LauncherType {
                 uses: 15,
                 color: Color::srgb(0.7, 0.7, 0.8),
                 size: Vec2::new(14.0, 14.0),
+                projectile_size: Vec2::new(6.0, 6.0),
             },
             LauncherType::LunchTrayCatapult => LauncherStats {
                 cooldown_secs: 1.5,
@@ -52,6 +56,7 @@ impl LauncherType {
                 uses: 5,
                 color: Color::srgb(0.5, 0.5, 0.4),
                 size: Vec2::new(20.0, 16.0),
+                projectile_size: Vec2::new(6.0, 6.0),
             },
             LauncherType::StrawBlowgun => LauncherStats {
                 cooldown_secs: 0.12,
@@ -61,6 +66,18 @@ impl LauncherType {
                 uses: 50,
                 color: Color::srgb(0.9, 0.9, 0.5),
                 size: Vec2::new(20.0, 6.0),
+                projectile_size: Vec2::new(6.0, 6.0),
+            },
+            // Single-shot, slow, devastating. Fires a massive watermelon in an arc.
+            LauncherType::WatermelonCatapult => LauncherStats {
+                cooldown_secs: 1.0,
+                speed_multiplier: 0.35,
+                range_multiplier: 1.2,
+                damage_multiplier: 5.0,
+                uses: 1,
+                color: Color::srgb(0.15, 0.65, 0.2),
+                size: Vec2::new(22.0, 18.0),
+                projectile_size: Vec2::new(20.0, 20.0),
             },
         }
     }
@@ -71,6 +88,7 @@ impl LauncherType {
         LauncherType::SporkLauncher,
         LauncherType::LunchTrayCatapult,
         LauncherType::StrawBlowgun,
+        LauncherType::WatermelonCatapult,
     ];
 }
 
@@ -82,6 +100,7 @@ pub struct LauncherStats {
     pub uses: u32,
     pub color: Color,
     pub size: Vec2,
+    pub projectile_size: Vec2,
 }
 
 /// Component for a launcher on the ground that can be picked up.
@@ -105,19 +124,66 @@ pub struct ChargingShot {
     pub max_charge: f32,
 }
 
-/// Launcher spawn point positions.
-const LAUNCHER_SPAWN_POSITIONS: &[(f32, f32)] = &[
-    (0.0, 0.0),
-    (-300.0, 200.0),
-    (300.0, -200.0),
-];
+const LAUNCHER_RESPAWN_SECS: f32 = 20.0;
 
-/// Spawn launcher pickups on the map.
+/// Spawn the single center launcher spawn point and its initial pickup.
 pub fn setup_launcher_spawns(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
     use rand::Rng;
     let mut rng = rand::thread_rng();
 
-    for &(x, y) in LAUNCHER_SPAWN_POSITIONS {
+    // Spawn the persistent spawn-point marker at center, already active
+    // because we immediately place a launcher there.
+    commands.spawn((
+        Transform::from_xyz(0.0, 0.0, 0.6),
+        LauncherSpawnPoint {
+            respawn_timer: Timer::from_seconds(LAUNCHER_RESPAWN_SECS, TimerMode::Once),
+            active: true,
+        },
+        Gameplay,
+    ));
+
+    // Immediately place one launcher at center on game start.
+    let launcher_type = LauncherType::ALL[rng.gen_range(0..LauncherType::ALL.len())];
+    let stats = launcher_type.stats();
+    let row = launcher_type_row(&launcher_type);
+    let ground_index = launcher_atlas_index(row, 0);
+
+    commands.spawn((
+        Sprite {
+            image: sprite_assets.launcher_image.clone(),
+            texture_atlas: Some(TextureAtlas {
+                layout: sprite_assets.launcher_layout.clone(),
+                index: ground_index,
+            }),
+            custom_size: Some(stats.size),
+            ..default()
+        },
+        Transform::from_xyz(0.0, 0.0, 0.6),
+        LauncherPickup { launcher_type },
+        Gameplay,
+    ));
+}
+
+/// Respawn a launcher at center when the 20s timer expires.
+pub fn launcher_respawn_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut spawn_points: Query<(&Transform, &mut LauncherSpawnPoint)>,
+    sprite_assets: Res<SpriteAssets>,
+) {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+
+    for (transform, mut sp) in &mut spawn_points {
+        if sp.active {
+            continue;
+        }
+
+        sp.respawn_timer.tick(time.delta());
+        if !sp.respawn_timer.finished() {
+            continue;
+        }
+
         let launcher_type = LauncherType::ALL[rng.gen_range(0..LauncherType::ALL.len())];
         let stats = launcher_type.stats();
         let row = launcher_type_row(&launcher_type);
@@ -133,10 +199,36 @@ pub fn setup_launcher_spawns(mut commands: Commands, sprite_assets: Res<SpriteAs
                 custom_size: Some(stats.size),
                 ..default()
             },
-            Transform::from_xyz(x, y, 0.6),
+            Transform::from_xyz(transform.translation.x, transform.translation.y, 0.6),
             LauncherPickup { launcher_type },
             Gameplay,
         ));
+
+        sp.active = true;
+    }
+}
+
+/// When the launcher pickup at center is gone, reset the spawn point timer.
+pub fn reset_launcher_spawn_point_system(
+    pickups: Query<&Transform, With<LauncherPickup>>,
+    mut spawn_points: Query<(&Transform, &mut LauncherSpawnPoint)>,
+) {
+    for (sp_tf, mut sp) in &mut spawn_points {
+        if !sp.active {
+            continue;
+        }
+
+        let has_pickup = pickups.iter().any(|tf| {
+            tf.translation
+                .truncate()
+                .distance(sp_tf.translation.truncate())
+                < 10.0
+        });
+
+        if !has_pickup {
+            sp.active = false;
+            sp.respawn_timer.reset();
+        }
     }
 }
 
@@ -189,6 +281,7 @@ pub fn launcher_pickup_system(
 pub fn launcher_fire_system(
     mut commands: Commands,
     time: Res<Time>,
+    sprite_assets: Res<SpriteAssets>,
     mut players: Query<(
         Entity,
         &Transform,
@@ -233,12 +326,29 @@ pub fn launcher_fire_system(
         let base_speed = 300.0 * stats.speed_multiplier;
         let base_range = 400.0 * stats.range_multiplier;
 
-        commands.spawn((
+        let row = launcher_type_row(&launcher.launcher_type);
+        let is_watermelon = launcher.launcher_type == LauncherType::WatermelonCatapult;
+
+        let sprite = if is_watermelon {
+            Sprite {
+                image: sprite_assets.launcher_image.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: sprite_assets.launcher_layout.clone(),
+                    index: launcher_atlas_index(row, 2),
+                }),
+                custom_size: Some(stats.projectile_size),
+                ..default()
+            }
+        } else {
             Sprite {
                 color: stats.color.with_alpha(0.8),
-                custom_size: Some(Vec2::new(6.0, 6.0)),
+                custom_size: Some(stats.projectile_size),
                 ..default()
-            },
+            }
+        };
+
+        let mut proj = commands.spawn((
+            sprite,
             Transform::from_xyz(player_tf.translation.x, player_tf.translation.y, 2.0),
             InFlight {
                 thrown_by: player_entity,
@@ -250,6 +360,23 @@ pub fn launcher_fire_system(
             },
             Gameplay,
         ));
+
+        if is_watermelon {
+            proj.insert(ArcFlight {
+                vertical_velocity: 250.0,
+                gravity: 350.0,
+                simulated_z: 0.0,
+            });
+            proj.insert(AnimationState::new(
+                "flight",
+                FrameRange {
+                    start: launcher_atlas_index(row, 2),
+                    end: launcher_atlas_index(row, 3),
+                    fps: 6.0,
+                    looping: true,
+                },
+            ));
+        }
 
         launcher.uses_remaining -= 1;
         launcher.cooldown_timer.reset();

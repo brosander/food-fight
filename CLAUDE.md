@@ -185,11 +185,17 @@ Players are NOT hardcoded. The `Lobby` resource (`Vec<PlayerSlot>`) manages join
 
 ### Food System
 
-8 food types with distinct stats (damage, speed, trajectory kind). 5 launcher types with cooldowns, multipliers, and limited uses. Three trajectory systems: straight, arc (simulated Z with gravity), bounce (wall reflection). Food spawns at fixed points with 5-second respawn timers.
+8 food types with distinct stats (damage, speed, trajectory kind). 6 launcher types with cooldowns, multipliers, and limited uses. Three trajectory systems: straight, arc (simulated Z with gravity), bounce (wall reflection). Food spawns at fixed points with 5-second respawn timers.
+
+### Launcher Spawning
+
+Single spawn point at map center (0, 0). One launcher spawns immediately on game start. After pickup (or uses exhausted), a new random launcher respawns after **20 seconds**. Implemented via `LauncherSpawnPoint` component (mirrors `FoodSpawnPoint` pattern): `active=true` while pickup present, `reset_launcher_spawn_point_system` detects pickup gone → starts timer, `launcher_respawn_system` fires when timer finishes.
 
 ### NPC State Machine
 
 `NpcState` enum: `Patrolling` → `Suspicious` → `Chasing` → `Returning` → `Patrolling`. Detection uses cone check (angle + distance). NPCs change sprite color based on state (yellow=suspicious, red=chasing). Three NPCs: Teacher (medium speed, patrols tables), Principal (slow, wide detection), Lunch Lady (stationary at counter). Janitor is a planned fourth role (not yet spawned).
+
+**Teacher special rule:** `teacher_launcher_alert_system` (runs before `detection_system`) immediately forces Teacher into `Chasing` toward the nearest player holding an `EquippedLauncher` — bypasses cone and distance checks entirely. Teacher resumes normal detection once no player holds a launcher.
 
 ### Map Layout
 
@@ -215,6 +221,7 @@ All entities currently render as colored rectangles except players:
 - Wall thickness: 16px
 - Pickup range: 40px
 - Food spawn respawn: 5 seconds
+- Launcher spawn: 1 point at center (0,0), 20-second respawn
 - Projectile max range: 400-600px
 - NPC detection: Teacher 150px/60deg, Principal 200px/90deg, LunchLady 80px/180deg
 - NPC chase speed: 1.3x normal

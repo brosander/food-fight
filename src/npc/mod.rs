@@ -23,6 +23,7 @@ impl Plugin for NpcPlugin {
                 FixedUpdate,
                 (
                     detection::suspicion_system,
+                    detection::teacher_launcher_alert_system,
                     detection::detection_system,
                     patrol::patrol_system,
                     patrol::returning_system,

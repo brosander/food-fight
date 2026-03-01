@@ -5,6 +5,31 @@ use crate::food::components::InFlight;
 use crate::food::launcher::EquippedLauncher;
 use crate::player::components::Player;
 
+/// Teachers immediately chase any player holding a launcher, bypassing cone/distance checks.
+pub fn teacher_launcher_alert_system(
+    mut npcs: Query<(&NpcAuthority, &mut NpcState, &Transform)>,
+    players: Query<(Entity, &Transform), (With<Player>, With<EquippedLauncher>)>,
+) {
+    for (npc, mut state, npc_tf) in &mut npcs {
+        if npc.role != NpcRole::Teacher {
+            continue;
+        }
+
+        let target = players
+            .iter()
+            .min_by(|(_, a), (_, b)| {
+                let da = a.translation.truncate().distance(npc_tf.translation.truncate());
+                let db = b.translation.truncate().distance(npc_tf.translation.truncate());
+                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|(e, _)| e);
+
+        if let Some(target_entity) = target {
+            *state = NpcState::Chasing { target: target_entity };
+        }
+    }
+}
+
 /// Marks players as Suspicious when they throw food, fire a launcher,
 /// or are holding a weapon.
 pub fn suspicion_system(

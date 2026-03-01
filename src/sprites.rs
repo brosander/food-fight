@@ -141,7 +141,7 @@ fn load_sprite_assets(
     let launcher_layout = layouts.add(TextureAtlasLayout::from_grid(
         UVec2::new(32, 32),
         5,
-        5,
+        6,
         None,
         None,
     ));
@@ -273,6 +273,7 @@ pub fn launcher_type_row(launcher_type: &crate::food::launcher::LauncherType) ->
         LauncherType::SporkLauncher => 2,
         LauncherType::LunchTrayCatapult => 3,
         LauncherType::StrawBlowgun => 4,
+        LauncherType::WatermelonCatapult => 5,
     }
 }
 

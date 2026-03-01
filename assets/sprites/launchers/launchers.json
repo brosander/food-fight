@@ -2,8 +2,8 @@
   "texture": "sprites/launchers/launchers.png",
   "tile_size": [32, 32],
   "columns": 5,
-  "rows": 5,
-  "total_frames": 25,
+  "rows": 6,
+  "total_frames": 30,
   "frame_labels": ["ground_pickup", "equipped_held", "firing_1", "firing_2", "depleted"],
   "launcher_types": {
     "slingshot": {
@@ -55,6 +55,16 @@
       "cooldown": 0.12,
       "uses": 50,
       "rapid_fire": true,
+      "ground_frame": 0,
+      "equipped_frame": 1,
+      "fire_frames": [2, 3],
+      "depleted_frame": 4
+    },
+    "watermelon_catapult": {
+      "row": 5,
+      "entity_size": [22, 18],
+      "cooldown": 1.0,
+      "uses": 1,
       "ground_frame": 0,
       "equipped_frame": 1,
       "fire_frames": [2, 3],
