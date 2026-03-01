@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::audio::SoundEvent;
 use crate::food::components::*;
 use crate::player::components::{Health, Player};
 use crate::sprites::{AnimationState, FrameRange, SpriteAssets, effects_atlas_index};
@@ -11,6 +12,7 @@ const PLAYER_HALF_SIZE: f32 = 16.0;
 /// Skips the player who threw the food.
 pub fn food_player_collision_system(
     mut commands: Commands,
+    mut sound: EventWriter<SoundEvent>,
     projectiles: Query<(Entity, &Transform, &InFlight)>,
     mut players: Query<(Entity, &Transform, &mut Health), With<Player>>,
     sprite_assets: Res<SpriteAssets>,
@@ -36,6 +38,7 @@ pub fn food_player_collision_system(
             ) {
                 // Apply damage
                 health.0 = (health.0 - flight.damage).max(0.0);
+                sound.send(SoundEvent::FoodHit);
 
                 // Spawn hit flash animation
                 let hit_start = effects_atlas_index(0, 0);

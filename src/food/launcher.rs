@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use super::components::*;
+use crate::audio::SoundEvent;
 use crate::input::ControllerInput;
 use crate::sprites::{AnimationState, FrameRange, SpriteAssets, launcher_atlas_index, launcher_type_row};
 use crate::states::Gameplay;
@@ -237,6 +238,7 @@ const PICKUP_RANGE: f32 = 70.0;
 /// Pickup system for launchers: player presses West (X/Square) near a launcher.
 pub fn launcher_pickup_system(
     mut commands: Commands,
+    mut sound: EventWriter<SoundEvent>,
     players: Query<(Entity, &Transform, &ControllerInput, Option<&EquippedLauncher>)>,
     launchers: Query<(Entity, &Transform, &LauncherPickup)>,
 ) {
@@ -271,6 +273,7 @@ pub fn launcher_pickup_system(
                 cooldown_timer: Timer::from_seconds(stats.cooldown_secs, TimerMode::Once),
                 uses_remaining: stats.uses,
             });
+            sound.send(SoundEvent::LauncherPickup);
         }
     }
 }
@@ -280,6 +283,7 @@ pub fn launcher_pickup_system(
 /// LunchTrayCatapult uses charge system separately.
 pub fn launcher_fire_system(
     mut commands: Commands,
+    mut sound: EventWriter<SoundEvent>,
     time: Res<Time>,
     sprite_assets: Res<SpriteAssets>,
     mut players: Query<(
@@ -380,6 +384,7 @@ pub fn launcher_fire_system(
 
         launcher.uses_remaining -= 1;
         launcher.cooldown_timer.reset();
+        sound.send(SoundEvent::LauncherFire);
     }
 }
 
@@ -387,6 +392,7 @@ pub fn launcher_fire_system(
 /// Hold right trigger to charge, release to fire.
 pub fn catapult_charge_system(
     mut commands: Commands,
+    mut sound: EventWriter<SoundEvent>,
     time: Res<Time>,
     mut players: Query<(
         Entity,
@@ -467,6 +473,7 @@ pub fn catapult_charge_system(
 
                 launcher.uses_remaining -= 1;
                 launcher.cooldown_timer.reset();
+                sound.send(SoundEvent::LauncherFire);
             }
         }
     }

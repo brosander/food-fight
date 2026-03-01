@@ -2,6 +2,8 @@
 
 **Git commits:** Do not add Claude as a co-author. No `Co-Authored-By` trailers.
 
+**Keep this file up to date.** When adding new systems, files, plugins, constants, or architectural patterns, update the relevant sections here before finishing the work.
+
 2D top-down multiplayer food fight game. Students battle with food in a school cafeteria while avoiding patrolling NPC authority figures. Built with Rust + Bevy 0.15.
 
 ## Tech Stack
@@ -33,6 +35,7 @@ src/
 ├── steam.rs             # SteamInputPlugin — Steam Input action sets, controller polling (feature-gated)
 ├── controller.rs        # Gamepad utilities (read_left/right_stick), debug logging, disconnect/reconnect
 ├── sprites.rs           # SpritePlugin, SpriteAssets, AnimationState, frame-based animation
+├── audio.rs             # AudioPlugin, SoundEvent (event-driven SFX), SoundAssets resource
 ├── lobby/
 │   ├── mod.rs           # Lobby resource + PlayerSlot, join/leave/ready systems, player spawning
 │   └── ui.rs            # Lobby screen UI (2x2 slot grid)
@@ -85,16 +88,17 @@ The `Gameplay` marker component is added to all in-game entities and used for bu
 
 1. `DefaultPlugins` (with `ImagePlugin::default_nearest()` for pixel art)
 2. `SpritePlugin` — loads sprite assets (must precede gameplay plugins)
-3. `SteamInputPlugin` (feature-gated) — must precede `InputPlugin`; populates `ControllerRegistry` via Steam Input
-4. `InputPlugin` — registers `ControllerRegistry`, runs gilrs population system in `PreUpdate`
-5. `ControllerPlugin` — gamepad debug logging, disconnect → auto-pause, reconnect logging
-6. `LobbyPlugin` — lobby UI, join/leave/ready, spawns players on `OnEnter(Playing)`
-7. `PlayerPlugin` — input→velocity, movement, animation (FixedUpdate, gated on Playing)
-8. `FoodPlugin` — food spawns, throwing, launchers, trajectories (FixedUpdate, gated on Playing)
-9. `CombatPlugin` — food-player collision (FixedUpdate, gated on Playing)
-10. `NpcPlugin` — NPC spawning, detection, patrol, chase, catch (FixedUpdate, gated on Playing)
-11. `MapPlugin` — cafeteria spawn, wall collision (FixedUpdate, gated on Playing)
-12. `UiPlugin` — main menu, HUD, pause, round over, cleanup
+3. `AudioPlugin` — registers `SoundEvent`, loads `SoundAssets`, plays sounds on `Update`
+4. `SteamInputPlugin` (feature-gated) — must precede `InputPlugin`; populates `ControllerRegistry` via Steam Input
+5. `InputPlugin` — registers `ControllerRegistry`, runs gilrs population system in `PreUpdate`
+6. `ControllerPlugin` — gamepad debug logging, disconnect → auto-pause, reconnect logging
+7. `LobbyPlugin` — lobby UI, join/leave/ready, spawns players on `OnEnter(Playing)`
+8. `PlayerPlugin` — input→velocity, movement, animation (FixedUpdate, gated on Playing)
+9. `FoodPlugin` — food spawns, throwing, launchers, trajectories (FixedUpdate, gated on Playing)
+10. `CombatPlugin` — food-player collision (FixedUpdate, gated on Playing)
+11. `NpcPlugin` — NPC spawning, detection, patrol, chase, catch (FixedUpdate, gated on Playing)
+12. `MapPlugin` — cafeteria spawn, wall collision (FixedUpdate, gated on Playing)
+13. `UiPlugin` — main menu, HUD, pause, round over, cleanup
 
 ## Input Architecture
 
@@ -199,6 +203,27 @@ Single spawn point at map center (0, 0). One launcher spawns immediately on game
 
 **Teacher special rule:** `teacher_launcher_alert_system` (runs before `detection_system`) immediately forces Teacher into `Chasing` toward the nearest player holding an `EquippedLauncher` — bypasses cone and distance checks entirely. Teacher resumes normal detection once no player holds a launcher.
 
+### Audio
+
+Sound effects use a simple event-driven pattern in `src/audio.rs`:
+
+1. Gameplay systems send `SoundEvent` variants (e.g., `sound.send(SoundEvent::FoodHit)`)
+2. `play_sounds` system (Update) reads the events and spawns `(AudioPlayer(handle), PlaybackSettings::DESPAWN)` — entities auto-despawn when playback finishes
+3. Round-over fanfare is triggered directly via `OnEnter(GameState::RoundOver)` — no event needed
+
+**SoundEvent variants and where they're sent:**
+
+| Variant | Sent from |
+|---|---|
+| `FoodPickup` | `food/throwing.rs` → `pickup_system` |
+| `FoodThrow` | `food/throwing.rs` → `throw_system` |
+| `LauncherPickup` | `food/launcher.rs` → `launcher_pickup_system` |
+| `LauncherFire` | `food/launcher.rs` → `launcher_fire_system`, `catapult_charge_system` |
+| `FoodHit` | `combat/collision.rs` → `food_player_collision_system` |
+| `PlayerCaught` | `npc/chase.rs` → `catch_system` |
+
+Sound files live in `assets/sounds/*.ogg`. Sources and original filenames documented in `ATTRIBUTIONS.md`. Bevy logs an asset error (no crash) if a file is missing — audio for that event is silently skipped.
+
 ### Map Layout
 
 Procedural cafeteria: 960x640 play area centered at origin. Bounds: ±480 x, ±320 y. Perimeter walls (16px thick), 6 tables in 2x3 grid, lunch counter at top, 2 pillars, 2 door markers. Everything uses the `Wall { half_size }` component for AABB collision.
@@ -277,7 +302,7 @@ Procedural colored rectangles: floor=dark brown, walls=brown, tables=tan, counte
 - [x] Input abstraction: ControllerInput/ControllerRegistry, gilrs + Steam Input backends
 - [x] Steam Deck: Gaming Mode launch via steam-launch.sh, steamdeck.sh build helper
 - [x] Sprite art: players, NPCs (Teacher/Principal/LunchLady), food, launchers, effects — all atlased
-- [ ] Audio: none
+- [x] Audio: `src/audio.rs` — SoundEvent system, 7 OGG slots in `assets/sounds/` (see ATTRIBUTIONS.md)
 - [ ] Additional maps: only cafeteria
 - [ ] Polish: no particles or screen shake
 
@@ -310,6 +335,7 @@ These are different from older `steamworks-rs` examples you'll find online:
 
 ## Reference Docs
 
+- `ATTRIBUTIONS.md` — sound effect sources and original filenames (all CC0 from Kenney.nl)
 - `MACBOOK.md` — guide for Bluetooth controller support on macOS
 - `STEAMDECK.md` — Steam Deck deployment guide
 - `steamdeck.sh` — automated setup/build/run script for Steam Deck desktop mode

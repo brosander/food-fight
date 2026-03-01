@@ -1,3 +1,4 @@
+mod audio;
 mod combat;
 mod controller;
 mod food;
@@ -35,7 +36,8 @@ fn main() {
     .insert_resource(ClearColor(Color::srgb(0.15, 0.15, 0.2)))
     .init_state::<GameState>()
     // Sprite assets (must be before gameplay plugins)
-    .add_plugins(sprites::SpritePlugin);
+    .add_plugins(sprites::SpritePlugin)
+    .add_plugins(audio::AudioPlugin);
 
     // Steam integration (must be before input plugin)
     #[cfg(feature = "steam")]

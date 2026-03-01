@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use super::components::*;
+use crate::audio::SoundEvent;
 use crate::food::components::Inventory;
 use crate::food::launcher::EquippedLauncher;
 use crate::player::components::Player;
@@ -37,6 +38,7 @@ pub fn chase_system(
 /// When chasing NPC gets close enough, catch the player.
 pub fn catch_system(
     mut commands: Commands,
+    mut sound: EventWriter<SoundEvent>,
     npcs: Query<(&NpcAuthority, &NpcState, &Transform)>,
     players: Query<(Entity, &Transform, Option<&Caught>), With<Player>>,
 ) {
@@ -70,6 +72,7 @@ pub fn catch_system(
                 commands.entity(player_entity).insert(Caught {
                     stun_timer: Timer::from_seconds(stun_duration, TimerMode::Once),
                 });
+                sound.send(SoundEvent::PlayerCaught);
             }
         }
     }

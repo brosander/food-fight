@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use super::components::*;
+use crate::audio::SoundEvent;
 use crate::input::ControllerInput;
 use crate::sprites::{AnimationState, FrameRange, SpriteAssets, food_atlas_index, food_type_row};
 use crate::states::Gameplay;
@@ -10,6 +11,7 @@ const PICKUP_RANGE: f32 = 70.0;
 /// Pickup system: when player presses South (A/Cross) near a Throwable food, add it to inventory.
 pub fn pickup_system(
     mut commands: Commands,
+    mut sound: EventWriter<SoundEvent>,
     players: Query<(Entity, &Transform, &ControllerInput, &Inventory)>,
     food_items: Query<(Entity, &Transform, &FoodItem), With<Throwable>>,
 ) {
@@ -41,6 +43,7 @@ pub fn pickup_system(
             commands.entity(player_entity).insert(Inventory {
                 held_food: Some(food_type),
             });
+            sound.send(SoundEvent::FoodPickup);
         }
     }
 }
@@ -48,6 +51,7 @@ pub fn pickup_system(
 /// Throw system: Right trigger to throw, right stick (or left stick fallback) to aim.
 pub fn throw_system(
     mut commands: Commands,
+    mut sound: EventWriter<SoundEvent>,
     players: Query<(Entity, &Transform, &ControllerInput, &Inventory)>,
     sprite_assets: Res<SpriteAssets>,
 ) {
@@ -126,6 +130,8 @@ pub fn throw_system(
             }
             TrajectoryKind::Straight => {}
         }
+
+        sound.send(SoundEvent::FoodThrow);
 
         // Clear inventory
         commands.entity(player_entity).insert(Inventory {
