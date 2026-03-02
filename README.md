@@ -9,7 +9,7 @@ Built with Rust and Bevy 0.15. Native on macOS and Steam Deck.
 ## Gameplay
 
 - **Up to 4 players** join with their gamepads and fight to knock each other out
-- **8 food types** — pizza, meatball, jello, sandwich, apple, soup, cookie, cake — each with different speed, damage, and trajectory
+- **8 food types** — pizza, meatball, jello, grapes, milk carton, spaghetti, banana peel, mystery meat — each with different speed, damage, and trajectory
 - **6 launchers** scattered around the map for big plays: slingshot, catapult, soda cannon, and more
 - **3 projectile trajectories** — straight, arcing (with gravity), and bouncing (wall reflections)
 - **NPC authority figures** patrol the cafeteria and chase anyone they catch in the act:
