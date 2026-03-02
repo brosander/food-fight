@@ -10,6 +10,7 @@ use crate::food::launcher::EquippedLauncher;
 use crate::lobby::Lobby;
 use crate::npc::components::Caught;
 use crate::player::components::{Health, Player};
+use crate::score::CumulativeScores;
 
 #[derive(Component)]
 pub struct HudRoot;
@@ -27,6 +28,11 @@ pub struct HealthBarFill {
 
 #[derive(Component)]
 pub struct PlayerStatusText {
+    pub player_id: u8,
+}
+
+#[derive(Component)]
+pub struct PlayerScoreText {
     pub player_id: u8,
 }
 
@@ -106,13 +112,25 @@ fn spawn_player_hud(parent: &mut ChildBuilder, player_id: u8, color: Color) {
                 TextColor(Color::srgb(0.7, 0.7, 0.7)),
                 PlayerStatusText { player_id },
             ));
+
+            col.spawn((
+                Text::new("0 pts | 0 slips"),
+                TextFont {
+                    font_size: 12.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.9, 0.7, 0.3)),
+                PlayerScoreText { player_id },
+            ));
         });
 }
 
 pub fn update_hud(
     players: Query<(&Player, &Health, &Inventory, Option<&EquippedLauncher>, Option<&Caught>)>,
     mut health_fills: Query<(&HealthBarFill, &mut Node)>,
-    mut status_texts: Query<(&PlayerStatusText, &mut Text)>,
+    mut status_texts: Query<(&PlayerStatusText, &mut Text), Without<PlayerScoreText>>,
+    mut score_texts: Query<(&PlayerScoreText, &mut Text), Without<PlayerStatusText>>,
+    scores: Res<CumulativeScores>,
 ) {
     for (player, health, inventory, launcher, caught) in &players {
         let health_pct = (health.0 / 100.0 * 100.0).clamp(0.0, 100.0);
@@ -139,6 +157,15 @@ pub fn update_hud(
         for (text_marker, mut text) in &mut status_texts {
             if text_marker.player_id == player.id {
                 **text = status.clone();
+            }
+        }
+
+        let idx = (player.id - 1) as usize;
+        let entry = &scores.entries[idx];
+        let score_str = format!("{} pts | {} slips", entry.damage_dealt as u32, entry.detention_slips);
+        for (text_marker, mut text) in &mut score_texts {
+            if text_marker.player_id == player.id {
+                **text = score_str.clone();
             }
         }
     }

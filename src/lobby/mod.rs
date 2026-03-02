@@ -239,7 +239,6 @@ fn spawn_players_from_lobby(
             },
             Health(100.0),
             Velocity(Vec2::ZERO),
-            Score(0),
             ControllerLink(slot.controller_id),
             ControllerInput::default(),
             Inventory { held_food: None },

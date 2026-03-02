@@ -18,6 +18,7 @@ Built with Rust and Bevy 0.15. Native on macOS and Steam Deck.
   - **Lunch Lady** — stationary at the counter but watching
 - **Elimination & lunch detention** — when a player's health hits zero they are banished to a corner table for the rest of the round. Each corner has a dedicated detention seat (one per player). Eliminated players can't move, throw, or interact — they just sit there watching.
 - Last player standing wins the round
+- **Multi-round sessions** — after each round the scoreboard shows cumulative damage dealt and **Detention Slips** (how many rivals you personally sent to lunch detention). Press **START** to play another round with the same players and carry the scores forward, or **B (East)** to return to the main menu and reset everything
 
 Controls are fully gamepad-driven. Plug in Xbox 360 / Xbox One / PS4 / PS5 / Switch Pro controllers and press **A (South)** to join the lobby.
 
@@ -126,6 +127,7 @@ The core game loop is complete and playable.
 - [x] Dynamic lobby (1–4 players, press to join)
 - [x] Full game flow: menu → lobby → playing → round over
 - [x] Elimination & lunch detention (corner tables, last player standing wins)
+- [x] Multi-round sessions with cumulative scoring (damage + detention slips)
 - [x] Steam Deck Gaming Mode support
 - [x] Sprite art for players, NPCs, food, launchers, effects, UI
 - [x] Audio

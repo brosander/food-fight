@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use crate::input::ControllerRegistry;
 use crate::lobby::Lobby;
+use crate::score::CumulativeScores;
 use crate::states::{GameSessionActive, GameState, Gameplay};
 
 pub struct UiPlugin;
@@ -46,7 +47,7 @@ impl Plugin for UiPlugin {
                 scoreboard::round_over_system.run_if(in_state(GameState::RoundOver)),
             )
             // Cleanup gameplay when returning to main menu
-            .add_systems(OnEnter(GameState::MainMenu), (cleanup_gameplay, cleanup_lobby));
+            .add_systems(OnEnter(GameState::MainMenu), (cleanup_gameplay, cleanup_lobby, reset_scores));
     }
 }
 
@@ -258,4 +259,9 @@ fn cleanup_gameplay(
 /// Clear the lobby when returning to main menu.
 fn cleanup_lobby(mut lobby: ResMut<Lobby>) {
     lobby.slots.clear();
+}
+
+/// Reset cumulative scores when returning to main menu (new session).
+fn reset_scores(mut scores: ResMut<CumulativeScores>) {
+    scores.reset();
 }

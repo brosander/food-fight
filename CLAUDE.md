@@ -33,6 +33,7 @@ Platform-specific: Linux gets borderless fullscreen + scale factor override 1.0 
 src/
 ├── main.rs              # App setup, plugins, camera, window config
 ├── states.rs            # GameState enum, Gameplay/GameSessionActive markers
+├── score.rs             # CumulativeScores resource — damage_dealt + detention_slips per player, persists across rounds
 ├── input.rs             # ControllerInput, ControllerRegistry, ControllerId, InputPlugin (gilrs path)
 ├── steam.rs             # SteamInputPlugin — Steam Input action sets, controller polling (feature-gated)
 ├── controller.rs        # Gamepad utilities (read_left/right_stick), debug logging, disconnect/reconnect
@@ -43,7 +44,7 @@ src/
 │   └── ui.rs            # Lobby screen UI (2x2 slot grid)
 ├── player/
 │   ├── mod.rs           # PlayerPlugin registration
-│   ├── components.rs    # Player, Health, Velocity, Score, ControllerLink
+│   ├── components.rs    # Player, Health, Velocity, ControllerLink
 │   ├── input.rs         # ControllerInput.move_stick → Velocity
 │   ├── movement.rs      # Velocity → transform, bounds clamping
 │   └── animation.rs     # Placeholder scale-pulse (no sprite sheets yet)
@@ -70,14 +71,15 @@ src/
 └── ui/
     ├── mod.rs           # UiPlugin, main menu, pause (with exit option), cleanup systems
     ├── hud.rs           # Health bars, status text per player (dynamic from lobby)
-    └── scoreboard.rs    # Win check, round-over screen
+    └── scoreboard.rs    # Win check, round-over screen (cumulative scores, Play Again / Main Menu)
 ```
 
 ## Game State Flow
 
 ```
 MainMenu → Lobby → Playing ⇄ Paused
-                  Playing → RoundOver → MainMenu
+                  Playing → RoundOver → Playing   (Play Again — scores persist, lobby kept)
+                            RoundOver → MainMenu  (Main Menu — scores reset, lobby cleared)
 ```
 
 States defined in `states.rs`: `MainMenu` (default), `Lobby`, `MapSelect` (stub), `Loading` (stub), `Playing`, `Paused`, `RoundOver`.
@@ -219,6 +221,20 @@ When a player's health hits zero they are eliminated:
 
 Corner tables are visual-only sprites (no `Wall` component) in `map/loading.rs`.
 
+### Cumulative Scoring
+
+`CumulativeScores` resource (`src/score.rs`) persists across rounds until the session returns to MainMenu.
+
+- **`damage_dealt: f32`** — total damage dealt to other players, credited in `food_player_collision_system` as `flight.damage.min(health.0)` (never overcounts past remaining HP).
+- **`detention_slips: u32`** — number of players this player personally eliminated (sent to lunch detention). Displayed in the round-over scoreboard as "Detention Slips."
+
+Indexed by `(player.id - 1)` (0–3). Updated in `combat/collision.rs`. Reset via `reset_scores` on `OnEnter(MainMenu)`.
+
+**Round-over screen** (`ui/scoreboard.rs`):
+- Shows round winner title + full cumulative table (Player | Damage | Detention Slips).
+- START = Play Again: despawns all `Gameplay` entities + HUD, removes `GameSessionActive`, transitions to `Playing` (spawn systems run again, scores carry over).
+- EAST (B) / Escape = Main Menu: transitions to `MainMenu`, triggering full cleanup + score reset.
+
 ### NPC State Machine
 
 `NpcState` enum: `Patrolling` → `Suspicious` → `Chasing` → `Returning` → `Patrolling`. Detection uses cone check (angle + distance). NPCs change sprite color based on state (yellow=suspicious, red=chasing). Three NPCs: Teacher (medium speed, patrols tables), Principal (slow, wide detection), Lunch Lady (stationary at counter). Janitor is a planned fourth role (not yet spawned).
@@ -321,6 +337,7 @@ Procedural colored rectangles: floor=dark brown, walls=brown, tables=tan, counte
 - [x] Phase 4: Map (procedural cafeteria, wall collision) — NO tilemap, no Tiled
 - [x] Phase 5: NPCs (3 roles, state machine, detection, chase, catch, penalties)
 - [x] Phase 6: Game flow & UI (menus, HUD, pause, round over, lobby)
+- [x] Multi-round sessions: Play Again from round-over screen, cumulative damage score + detention slip counter
 - [x] Input abstraction: ControllerInput/ControllerRegistry, gilrs + Steam Input backends
 - [x] Steam Deck: Gaming Mode launch via steam-launch.sh, steamdeck.sh build helper
 - [x] Sprite art: players, NPCs (Teacher/Principal/LunchLady), food, launchers, effects — all atlased

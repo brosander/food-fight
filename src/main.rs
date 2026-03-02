@@ -7,6 +7,7 @@ mod lobby;
 mod map;
 mod npc;
 mod player;
+pub mod score;
 mod sprites;
 mod states;
 #[cfg(feature = "steam")]
@@ -14,30 +15,32 @@ mod steam;
 mod ui;
 
 use bevy::prelude::*;
+use score::CumulativeScores;
 use states::{GameSessionActive, GameState};
 
 fn main() {
     let mut app = App::new();
 
-    app.add_plugins(
-        DefaultPlugins
-            .set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "Cafeteria Food Fight".to_string(),
-                    resolution: window_resolution(),
-                    #[cfg(feature = "steam")]
-                    mode: bevy::window::WindowMode::Windowed,
+    app.init_resource::<CumulativeScores>()
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Cafeteria Food Fight".to_string(),
+                        resolution: window_resolution(),
+                        #[cfg(feature = "steam")]
+                        mode: bevy::window::WindowMode::Windowed,
+                        ..default()
+                    }),
                     ..default()
-                }),
-                ..default()
-            })
-            .set(ImagePlugin::default_nearest()),
-    )
-    .insert_resource(ClearColor(Color::srgb(0.15, 0.15, 0.2)))
-    .init_state::<GameState>()
-    // Sprite assets (must be before gameplay plugins)
-    .add_plugins(sprites::SpritePlugin)
-    .add_plugins(audio::AudioPlugin);
+                })
+                .set(ImagePlugin::default_nearest()),
+        )
+        .insert_resource(ClearColor(Color::srgb(0.15, 0.15, 0.2)))
+        .init_state::<GameState>()
+        // Sprite assets (must be before gameplay plugins)
+        .add_plugins(sprites::SpritePlugin)
+        .add_plugins(audio::AudioPlugin);
 
     // Steam integration (must be before input plugin)
     #[cfg(feature = "steam")]

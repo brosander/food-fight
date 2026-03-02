@@ -1,6 +1,6 @@
 //! Player entity components.
 //!
-//! Core bundle: `Player` + `Health` + `Velocity` + `Score` + `ControllerLink` +
+//! Core bundle: `Player` + `Health` + `Velocity` + `ControllerLink` +
 //! `ControllerInput`. `ControllerLink` binds the entity to a specific controller;
 //! `ControllerInput` is populated each frame by the active input backend.
 
@@ -19,9 +19,6 @@ pub struct Health(pub f32);
 
 #[derive(Component)]
 pub struct Velocity(pub Vec2);
-
-#[derive(Component)]
-pub struct Score(#[allow(dead_code)] pub i32); // planned: scoring UI not yet wired up
 
 /// Links this player to a specific controller for input.
 #[derive(Component)]
