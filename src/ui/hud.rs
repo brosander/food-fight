@@ -10,7 +10,7 @@ use crate::food::launcher::EquippedLauncher;
 use crate::lobby::Lobby;
 use crate::npc::components::Caught;
 use crate::player::components::{Health, Player};
-use crate::score::CumulativeScores;
+use crate::score::RoundScores;
 
 #[derive(Component)]
 pub struct HudRoot;
@@ -130,7 +130,7 @@ pub fn update_hud(
     mut health_fills: Query<(&HealthBarFill, &mut Node)>,
     mut status_texts: Query<(&PlayerStatusText, &mut Text), Without<PlayerScoreText>>,
     mut score_texts: Query<(&PlayerScoreText, &mut Text), Without<PlayerStatusText>>,
-    scores: Res<CumulativeScores>,
+    scores: Res<RoundScores>,
 ) {
     for (player, health, inventory, launcher, caught) in &players {
         let health_pct = (health.0 / 100.0 * 100.0).clamp(0.0, 100.0);

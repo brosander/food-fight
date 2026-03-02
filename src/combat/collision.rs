@@ -4,7 +4,7 @@ use crate::audio::SoundEvent;
 use crate::food::components::*;
 use crate::food::launcher::{ChargingShot, EquippedLauncher};
 use crate::player::components::{Eliminated, Health, Player};
-use crate::score::CumulativeScores;
+use crate::score::{CumulativeScores, RoundScores};
 use crate::sprites::{AnimationState, FrameRange, SpriteAssets, effects_atlas_index};
 use crate::states::Gameplay;
 
@@ -20,6 +20,7 @@ pub fn food_player_collision_system(
     projectiles: Query<(Entity, &Transform, &InFlight)>,
     mut players: Query<(Entity, &Transform, &mut Health, Option<&Eliminated>), With<Player>>,
     attackers: Query<&Player>,
+    mut round: ResMut<RoundScores>,
     mut scores: ResMut<CumulativeScores>,
     sprite_assets: Res<SpriteAssets>,
 ) {
@@ -50,9 +51,10 @@ pub fn food_player_collision_system(
                 health.0 = (health.0 - flight.damage).max(0.0);
                 sound.send(SoundEvent::FoodHit);
 
-                // Credit the attacker's cumulative score
+                // Credit the attacker's round and cumulative scores
                 if let Ok(attacker) = attackers.get(flight.thrown_by) {
                     let idx = (attacker.id - 1) as usize;
+                    round.add_damage(idx, actual_damage);
                     scores.add_damage(idx, actual_damage);
                 }
 
@@ -100,9 +102,11 @@ pub fn food_player_collision_system(
                         .remove::<ChargingShot>();
                     // detention_system will snap them to their corner next tick
 
-                    // Credit the attacker with a detention slip
+                    // Credit the attacker with a detention slip in both scopes
                     if let Ok(attacker) = attackers.get(flight.thrown_by) {
-                        scores.add_detention((attacker.id - 1) as usize);
+                        let idx = (attacker.id - 1) as usize;
+                        round.add_detention(idx);
+                        scores.add_detention(idx);
                     }
                 }
 

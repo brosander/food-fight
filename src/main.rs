@@ -15,13 +15,14 @@ mod steam;
 mod ui;
 
 use bevy::prelude::*;
-use score::CumulativeScores;
+use score::{CumulativeScores, RoundScores};
 use states::{GameSessionActive, GameState};
 
 fn main() {
     let mut app = App::new();
 
     app.init_resource::<CumulativeScores>()
+        .init_resource::<RoundScores>()
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
@@ -57,10 +58,11 @@ fn main() {
         .add_plugins(npc::NpcPlugin)
         .add_plugins(map::MapPlugin)
         .add_plugins(ui::UiPlugin)
-        // Mark session active on first enter Playing (prevents re-spawn on unpause)
+        // On each new round start (not unpause): reset round scores and mark session active
         .add_systems(
             OnEnter(GameState::Playing),
-            mark_session_active.run_if(not(resource_exists::<GameSessionActive>)),
+            (reset_round_scores, mark_session_active)
+                .run_if(not(resource_exists::<GameSessionActive>)),
         )
         // Core setup
         .add_systems(Startup, setup_camera)
@@ -76,6 +78,10 @@ fn window_resolution() -> bevy::window::WindowResolution {
     {
         bevy::window::WindowResolution::new(1280.0, 800.0)
     }
+}
+
+fn reset_round_scores(mut round: ResMut<RoundScores>) {
+    round.reset();
 }
 
 fn mark_session_active(mut commands: Commands) {
