@@ -174,3 +174,47 @@ pub struct LauncherSpawnPoint {
 pub struct SplatEffect {
     pub lifetime: Timer,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum MeleeWeaponType {
+    LunchTray,
+    Baguette,
+}
+
+/// A melee weapon pickup on the ground.
+#[derive(Component)]
+pub struct MeleeWeaponPickup {
+    pub weapon_type: MeleeWeaponType,
+}
+
+/// Spawn point for melee weapons; one per side of the map.
+#[derive(Component)]
+pub struct MeleeWeaponSpawnPoint {
+    pub respawn_timer: Timer,
+    pub active: bool,
+}
+
+/// A player holding a melee weapon.
+#[derive(Component)]
+pub struct EquippedMeleeWeapon {
+    pub weapon_type: MeleeWeaponType,
+    pub swing_cooldown: Timer,
+    pub uses_remaining: u32,
+}
+
+/// Added on R1 just_pressed (0.2s window). Food hitting the front arc during this window is deflected.
+#[derive(Component)]
+pub struct ParryWindow {
+    pub timer: Timer,
+}
+
+/// Added when R1 is held past the parry window. Food in the front arc is blocked (despawned, no damage).
+#[derive(Component)]
+pub struct Blocking;
+
+/// Follows a player to display their equipped melee weapon sprite.
+/// Spawned/despawned automatically when EquippedMeleeWeapon is added/removed.
+#[derive(Component)]
+pub struct MeleeVisual {
+    pub player_entity: Entity,
+}

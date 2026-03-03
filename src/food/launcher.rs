@@ -236,49 +236,6 @@ pub fn reset_launcher_spawn_point_system(
     }
 }
 
-const PICKUP_RANGE: f32 = 70.0;
-
-/// Pickup system for launchers: player presses West (X/Square) near a launcher.
-pub fn launcher_pickup_system(
-    mut commands: Commands,
-    mut sound: EventWriter<SoundEvent>,
-    players: Query<(Entity, &Transform, &ControllerInput, Option<&EquippedLauncher>), Without<Eliminated>>,
-    launchers: Query<(Entity, &Transform, &LauncherPickup)>,
-) {
-    for (player_entity, player_tf, input, equipped) in &players {
-        if equipped.is_some() {
-            continue;
-        }
-
-        if !input.pickup_launcher.just_pressed {
-            continue;
-        }
-
-        // Find nearest launcher in range
-        let mut nearest: Option<(Entity, f32, LauncherType)> = None;
-        for (launcher_entity, launcher_tf, pickup) in &launchers {
-            let dist = player_tf
-                .translation
-                .truncate()
-                .distance(launcher_tf.translation.truncate());
-            if dist < PICKUP_RANGE && (nearest.is_none() || dist < nearest.as_ref().unwrap().1) {
-                nearest = Some((launcher_entity, dist, pickup.launcher_type));
-            }
-        }
-
-        if let Some((launcher_entity, _, launcher_type)) = nearest {
-            let stats = launcher_type.stats();
-            commands.entity(launcher_entity).despawn();
-            commands.entity(player_entity).insert(EquippedLauncher {
-                launcher_type,
-                cooldown_timer: Timer::from_seconds(stats.cooldown_secs, TimerMode::Once),
-                uses_remaining: stats.uses,
-            });
-            sound.send(SoundEvent::LauncherPickup);
-        }
-    }
-}
-
 /// Fire system for launchers. Right trigger to fire. Overrides normal throw when equipped.
 /// Rapid-fire weapons (ketchup, blowgun) fire while trigger is held.
 /// LunchTrayCatapult uses charge system separately.

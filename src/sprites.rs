@@ -6,10 +6,13 @@
 
 use bevy::prelude::*;
 
-use crate::food::components::{FoodType, Inventory};
+use crate::food::components::{
+    Blocking, EquippedMeleeWeapon, FoodType, Inventory, MeleeVisual, MeleeWeaponType, ParryWindow,
+};
+use crate::input::ControllerInput;
 use crate::npc::components::*;
 use crate::player::components::{Player, Velocity};
-use crate::states::GameState;
+use crate::states::{GameState, Gameplay};
 
 pub struct SpritePlugin;
 
@@ -18,7 +21,15 @@ impl Plugin for SpritePlugin {
         app.add_systems(Startup, load_sprite_assets)
             .add_systems(
                 FixedUpdate,
-                (update_player_animation, update_npc_animation, animate_sprites)
+                (
+                    despawn_melee_visuals,
+                    spawn_melee_visuals,
+                    update_player_animation,
+                    update_npc_animation,
+                    update_melee_animation,
+                    sync_melee_visual_position,
+                    animate_sprites,
+                )
                     .chain()
                     .run_if(in_state(GameState::Playing)),
             );
@@ -94,6 +105,9 @@ pub struct SpriteAssets {
 
     pub effects_image: Handle<Image>,
     pub effects_layout: Handle<TextureAtlasLayout>,
+
+    pub melee_image: Handle<Image>,
+    pub melee_layout: Handle<TextureAtlasLayout>,
 }
 
 // --- Loading ---
@@ -152,6 +166,13 @@ fn load_sprite_assets(
         None,
         None,
     ));
+    let melee_layout = layouts.add(TextureAtlasLayout::from_grid(
+        UVec2::new(32, 32),
+        6,
+        2,
+        None,
+        None,
+    ));
 
     commands.insert_resource(SpriteAssets {
         player_images: [
@@ -173,7 +194,195 @@ fn load_sprite_assets(
         launcher_layout,
         effects_image: asset_server.load("sprites/effects/effects.png"),
         effects_layout,
+        melee_image: asset_server.load("sprites/melee/melee_weapons.png"),
+        melee_layout,
     });
+}
+
+// --- Melee Visual Lifecycle Systems ---
+
+/// Spawns a weapon overlay sprite when a player picks up a melee weapon.
+fn spawn_melee_visuals(
+    mut commands: Commands,
+    sprite_assets: Res<SpriteAssets>,
+    added: Query<(Entity, &EquippedMeleeWeapon), Added<EquippedMeleeWeapon>>,
+    visuals: Query<&MeleeVisual>,
+) {
+    for (player_entity, weapon) in &added {
+        // Guard against duplicates (can happen when Added<T> fires during a swap).
+        if visuals.iter().any(|v| v.player_entity == player_entity) {
+            continue;
+        }
+        let row = melee_weapon_type_row(&weapon.weapon_type);
+        let equipped_idx = melee_atlas_index(row, 2);
+        commands.spawn((
+            Sprite {
+                image: sprite_assets.melee_image.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: sprite_assets.melee_layout.clone(),
+                    index: equipped_idx,
+                }),
+                custom_size: Some(Vec2::splat(32.0)),
+                color: Color::srgba(1.0, 1.0, 1.0, 0.0), // hidden until first update
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, 1.2),
+            AnimationState::new(
+                "equipped",
+                FrameRange {
+                    start: equipped_idx,
+                    end: equipped_idx,
+                    fps: 3.0,
+                    looping: true,
+                },
+            ),
+            MeleeVisual { player_entity },
+            Gameplay,
+        ));
+    }
+}
+
+/// Despawns weapon overlay sprites when a player drops or loses their melee weapon.
+/// Skips despawn when the removal is part of a weapon swap (player still has
+/// EquippedMeleeWeapon after the command batch is applied); the existing visual
+/// continues to track the player and update_melee_animation reads the new weapon type.
+fn despawn_melee_visuals(
+    mut commands: Commands,
+    mut removed: RemovedComponents<EquippedMeleeWeapon>,
+    still_armed: Query<(), With<EquippedMeleeWeapon>>,
+    visuals: Query<(Entity, &MeleeVisual)>,
+) {
+    for player_entity in removed.read() {
+        if still_armed.get(player_entity).is_ok() {
+            continue; // swap, not a drop — keep the visual
+        }
+        for (visual_entity, visual) in &visuals {
+            if visual.player_entity == player_entity {
+                commands.entity(visual_entity).despawn();
+            }
+        }
+    }
+}
+
+/// Keeps the weapon overlay sprite centred on the owning player each tick.
+fn sync_melee_visual_position(
+    players: Query<&Transform, (With<Player>, Without<MeleeVisual>)>,
+    mut visuals: Query<(&MeleeVisual, &mut Transform)>,
+) {
+    for (visual, mut tf) in &mut visuals {
+        if let Ok(player_tf) = players.get(visual.player_entity) {
+            tf.translation = Vec3::new(
+                player_tf.translation.x,
+                player_tf.translation.y,
+                1.2,
+            );
+        }
+    }
+}
+
+/// Drives animation on weapon overlay sprites based on the player's melee state.
+///
+/// LunchTray:  parry  → col 3 (flash, visible)
+///             block  → cols 4-5 loop (pulse, visible)
+///             idle   → hidden (alpha 0 — tray only shows when active)
+/// Baguette:   swing  → cols 3-5 one-shot (windup → peak → recovery, always visible)
+///             idle   → col 2 (equipped)
+///
+/// Also applies the first frame immediately on animation transitions so the windup
+/// frame is never skipped (set_animation doesn't update atlas.index, animate_sprites
+/// only does it on timer fire).
+fn update_melee_animation(
+    players: Query<(
+        &ControllerInput,
+        &EquippedMeleeWeapon,
+        Option<&ParryWindow>,
+        Option<&Blocking>,
+    )>,
+    mut visuals: Query<(&MeleeVisual, &mut AnimationState, &mut Sprite)>,
+) {
+    for (visual, mut anim, mut sprite) in &mut visuals {
+        let Ok((input, weapon, parry, blocking)) = players.get(visual.player_entity) else {
+            continue;
+        };
+        let row = melee_weapon_type_row(&weapon.weapon_type);
+        let prev_anim = anim.current_anim;
+
+        match weapon.weapon_type {
+            MeleeWeaponType::Baguette => {
+                if input.melee.just_pressed && weapon.swing_cooldown.finished() {
+                    sprite.color = Color::WHITE;
+                    anim.set_animation(
+                        "swing",
+                        FrameRange {
+                            start: melee_atlas_index(row, 3),
+                            end:   melee_atlas_index(row, 5),
+                            fps:   12.0,
+                            looping: false,
+                        },
+                    );
+                } else if anim.current_anim == "swing" && !anim.finished {
+                    // Keep visible while swing is playing
+                    sprite.color = Color::WHITE;
+                } else {
+                    sprite.color = Color::srgba(1.0, 1.0, 1.0, 0.0);
+                    anim.set_animation(
+                        "equipped",
+                        FrameRange {
+                            start: melee_atlas_index(row, 2),
+                            end:   melee_atlas_index(row, 2),
+                            fps:   3.0,
+                            looping: true,
+                        },
+                    );
+                }
+            }
+            MeleeWeaponType::LunchTray => {
+                if parry.is_some() {
+                    sprite.color = Color::WHITE;
+                    anim.set_animation(
+                        "parry",
+                        FrameRange {
+                            start: melee_atlas_index(row, 3),
+                            end:   melee_atlas_index(row, 3),
+                            fps:   15.0,
+                            looping: true,
+                        },
+                    );
+                } else if blocking.is_some() {
+                    sprite.color = Color::WHITE;
+                    anim.set_animation(
+                        "blocking",
+                        FrameRange {
+                            start: melee_atlas_index(row, 4),
+                            end:   melee_atlas_index(row, 5),
+                            fps:   4.0,
+                            looping: true,
+                        },
+                    );
+                } else {
+                    sprite.color = Color::srgba(1.0, 1.0, 1.0, 0.0);
+                    anim.set_animation(
+                        "equipped",
+                        FrameRange {
+                            start: melee_atlas_index(row, 2),
+                            end:   melee_atlas_index(row, 2),
+                            fps:   3.0,
+                            looping: true,
+                        },
+                    );
+                }
+            }
+        }
+
+        // Apply the initial frame immediately on any animation transition.
+        // animate_sprites only updates atlas.index on timer fire, so without this
+        // the first frame of a new animation would be skipped entirely.
+        if anim.current_anim != prev_anim {
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = anim.current_frame;
+            }
+        }
+    }
 }
 
 // --- Animation Systems ---
@@ -248,6 +457,18 @@ pub fn launcher_atlas_index(row: usize, col: usize) -> usize {
 
 pub fn effects_atlas_index(row: usize, col: usize) -> usize {
     atlas_index(row, col, 6)
+}
+
+pub fn melee_atlas_index(row: usize, col: usize) -> usize {
+    atlas_index(row, col, 6)
+}
+
+pub fn melee_weapon_type_row(weapon_type: &crate::food::components::MeleeWeaponType) -> usize {
+    use crate::food::components::MeleeWeaponType;
+    match weapon_type {
+        MeleeWeaponType::LunchTray => 0,
+        MeleeWeaponType::Baguette  => 1,
+    }
 }
 
 // --- Type-to-Row Mappings ---

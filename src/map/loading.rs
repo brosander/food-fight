@@ -111,6 +111,20 @@ pub fn spawn_cafeteria(mut commands: Commands) {
         ));
     }
 
+    // Melee weapon spawn point markers — subtle floor markings at (-280, 50) and (280, -50)
+    let melee_marker_color = Color::srgb(0.32, 0.28, 0.22);
+    for (x, y) in [(-280.0_f32, 50.0_f32), (280.0, -50.0)] {
+        commands.spawn((
+            Sprite {
+                color: melee_marker_color,
+                custom_size: Some(Vec2::new(40.0, 16.0)),
+                ..default()
+            },
+            Transform::from_xyz(x, y, -0.5),
+            Gameplay,
+        ));
+    }
+
     // Door openings (spawn locations for players) — marked by colored floor tiles
     let door_color = Color::srgb(0.3, 0.35, 0.28);
     commands.spawn((

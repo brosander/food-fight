@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::audio::SoundEvent;
 use crate::food::components::*;
 use crate::food::launcher::{ChargingShot, EquippedLauncher};
+use crate::input::ControllerInput;
 use crate::npc::components::{Enraged, NpcAuthority, NpcRole, NpcState};
 use crate::player::components::{Eliminated, Health, Player};
 use crate::score::{CumulativeScores, RoundScores};
@@ -19,7 +20,19 @@ pub fn food_player_collision_system(
     mut commands: Commands,
     mut sound: EventWriter<SoundEvent>,
     projectiles: Query<(Entity, &Transform, &InFlight)>,
-    mut players: Query<(Entity, &Transform, &mut Health, Option<&Eliminated>), With<Player>>,
+    mut players: Query<
+        (
+            Entity,
+            &Transform,
+            &ControllerInput,
+            &mut Health,
+            Option<&Eliminated>,
+            Option<&EquippedMeleeWeapon>,
+            Option<&ParryWindow>,
+            Option<&Blocking>,
+        ),
+        With<Player>,
+    >,
     attackers: Query<&Player>,
     mut round: ResMut<RoundScores>,
     mut scores: ResMut<CumulativeScores>,
@@ -29,7 +42,7 @@ pub fn food_player_collision_system(
         let proj_pos = proj_tf.translation.truncate();
         let proj_half = Vec2::new(6.0, 6.0);
 
-        for (player_entity, player_tf, mut health, eliminated) in &mut players {
+        for (player_entity, player_tf, input, mut health, eliminated, melee, parry_window, blocking) in &mut players {
             if player_entity == flight.thrown_by {
                 continue;
             }
@@ -41,78 +54,120 @@ pub fn food_player_collision_system(
 
             let player_pos = player_tf.translation.truncate();
 
-            if aabb_overlap(
-                proj_pos,
-                proj_half,
-                player_pos,
-                Vec2::splat(PLAYER_HALF_SIZE),
-            ) {
-                // Clamp actual damage to remaining health so score is honest
-                let actual_damage = flight.damage.min(health.0);
-                health.0 = (health.0 - flight.damage).max(0.0);
-                sound.send(SoundEvent::FoodHit);
+            if !aabb_overlap(proj_pos, proj_half, player_pos, Vec2::splat(PLAYER_HALF_SIZE)) {
+                continue;
+            }
 
-                // Credit the attacker's round and cumulative scores
-                if let Ok(attacker) = attackers.get(flight.thrown_by) {
-                    let idx = (attacker.id - 1) as usize;
-                    round.add_damage(idx, actual_damage);
-                    scores.add_damage(idx, actual_damage);
-                }
+            // Check lunch tray block/parry before applying damage
+            if matches!(melee.map(|m| m.weapon_type), Some(MeleeWeaponType::LunchTray)) {
+                let facing = {
+                    let s = input.move_stick;
+                    if s != Vec2::ZERO { s.normalize() } else { Vec2::Y }
+                };
+                // Food is "in front" if it's heading roughly toward the player's face
+                let food_incoming = flight.direction.dot(facing) < -0.4;
 
-                // Spawn hit flash animation
-                let hit_start = effects_atlas_index(0, 0);
-                commands.spawn((
-                    Sprite {
-                        image: sprite_assets.effects_image.clone(),
-                        texture_atlas: Some(TextureAtlas {
-                            layout: sprite_assets.effects_layout.clone(),
-                            index: hit_start,
-                        }),
-                        custom_size: Some(Vec2::new(24.0, 24.0)),
-                        ..default()
-                    },
-                    Transform::from_xyz(
-                        player_tf.translation.x,
-                        player_tf.translation.y,
-                        3.0,
-                    ),
-                    AnimationState::new(
-                        "hit_flash",
-                        FrameRange {
-                            start: effects_atlas_index(0, 0),
-                            end: effects_atlas_index(0, 5),
-                            fps: 15.0,
-                            looping: false,
-                        },
-                    ),
-                    SplatEffect {
-                        lifetime: Timer::from_seconds(0.4, TimerMode::Once),
-                    },
-                    Gameplay,
-                ));
-
-                commands.entity(proj_entity).despawn();
-
-                // Eliminate the player if health just hit zero
-                if health.0 == 0.0 {
-                    commands
-                        .entity(player_entity)
-                        .insert(Eliminated)
-                        .insert(Inventory { held_food: None })
-                        .remove::<EquippedLauncher>()
-                        .remove::<ChargingShot>();
-                    // detention_system will snap them to their corner next tick
-
-                    // Credit the attacker with a detention slip in both scopes
-                    if let Ok(attacker) = attackers.get(flight.thrown_by) {
-                        let idx = (attacker.id - 1) as usize;
-                        round.add_detention(idx);
-                        scores.add_detention(idx);
+                if food_incoming {
+                    if parry_window.is_some() {
+                        // Parry: deflect food back at the thrower
+                        commands.spawn((
+                            Sprite {
+                                color: Color::srgba(1.0, 1.0, 1.0, 0.0),
+                                ..default()
+                            },
+                            Transform::from_xyz(player_pos.x, player_pos.y, 2.0),
+                            InFlight {
+                                thrown_by: player_entity,
+                                direction: -flight.direction,
+                                speed: flight.speed * 1.2,
+                                damage: flight.damage,
+                                max_range: 600.0,
+                                distance_traveled: 0.0,
+                            },
+                            FoodItem {
+                                food_type: FoodType::Pizza, // placeholder — InFlight carries all stats
+                                damage: flight.damage,
+                            },
+                            Gameplay,
+                        ));
+                        commands.entity(proj_entity).despawn();
+                        break;
+                    } else if blocking.is_some() {
+                        // Block: absorb the food
+                        commands.entity(proj_entity).despawn();
+                        break;
                     }
                 }
-
-                break;
             }
+
+            // Normal damage
+            let actual_damage = flight.damage.min(health.0);
+            health.0 = (health.0 - flight.damage).max(0.0);
+            sound.send(SoundEvent::FoodHit);
+
+            // Credit the attacker's round and cumulative scores
+            if let Ok(attacker) = attackers.get(flight.thrown_by) {
+                let idx = (attacker.id - 1) as usize;
+                round.add_damage(idx, actual_damage);
+                scores.add_damage(idx, actual_damage);
+            }
+
+            // Spawn hit flash animation
+            let hit_start = effects_atlas_index(0, 0);
+            commands.spawn((
+                Sprite {
+                    image: sprite_assets.effects_image.clone(),
+                    texture_atlas: Some(TextureAtlas {
+                        layout: sprite_assets.effects_layout.clone(),
+                        index: hit_start,
+                    }),
+                    custom_size: Some(Vec2::new(24.0, 24.0)),
+                    ..default()
+                },
+                Transform::from_xyz(
+                    player_tf.translation.x,
+                    player_tf.translation.y,
+                    3.0,
+                ),
+                AnimationState::new(
+                    "hit_flash",
+                    FrameRange {
+                        start: effects_atlas_index(0, 0),
+                        end: effects_atlas_index(0, 5),
+                        fps: 15.0,
+                        looping: false,
+                    },
+                ),
+                SplatEffect {
+                    lifetime: Timer::from_seconds(0.4, TimerMode::Once),
+                },
+                Gameplay,
+            ));
+
+            commands.entity(proj_entity).despawn();
+
+            // Eliminate the player if health just hit zero
+            if health.0 == 0.0 {
+                commands
+                    .entity(player_entity)
+                    .insert(Eliminated)
+                    .insert(Inventory { held_food: None })
+                    .remove::<EquippedLauncher>()
+                    .remove::<ChargingShot>()
+                    .remove::<EquippedMeleeWeapon>()
+                    .remove::<ParryWindow>()
+                    .remove::<Blocking>();
+                // detention_system will snap them to their corner next tick
+
+                // Credit the attacker with a detention slip in both scopes
+                if let Ok(attacker) = attackers.get(flight.thrown_by) {
+                    let idx = (attacker.id - 1) as usize;
+                    round.add_detention(idx);
+                    scores.add_detention(idx);
+                }
+            }
+
+            break;
         }
     }
 }

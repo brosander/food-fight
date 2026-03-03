@@ -50,10 +50,11 @@ src/
 │   └── animation.rs     # Placeholder scale-pulse (no sprite sheets yet)
 ├── food/
 │   ├── mod.rs           # FoodPlugin registration
-│   ├── components.rs    # FoodType, FoodItem, Throwable, InFlight, ArcFlight, BounceFlight, Inventory, etc.
-│   ├── spawning.rs      # Food spawn points, respawn timers, initial spawn
-│   ├── throwing.rs      # Pickup (pickup_food) and throw (fire + aim_direction)
-│   ├── launcher.rs      # Launcher types, pickup (pickup_launcher), fire, catapult charge
+│   ├── components.rs    # FoodType, FoodItem, Throwable, InFlight, ArcFlight, BounceFlight, Inventory, MeleeWeaponType, etc.
+│   ├── spawning.rs      # Food + melee weapon spawn points, respawn timers, initial spawn
+│   ├── throwing.rs      # Unified pickup (South = food or launcher with drop-replace) and throw (fire)
+│   ├── launcher.rs      # Launcher types, fire, catapult charge (pickup handled by throwing.rs)
+│   ├── melee.rs         # Melee pickup (West), LunchTray block/parry, Baguette swing
 │   └── trajectory.rs    # Straight, arc, bounce movement + splat fade
 ├── combat/
 │   ├── mod.rs           # CombatPlugin
@@ -114,13 +115,14 @@ All input flows through a backend-agnostic abstraction in `src/input.rs`.
 pub struct ControllerInput {
     pub move_stick: Vec2,      // left stick, 0.15 deadzone applied
     pub aim_stick: Vec2,       // right stick, 0.15 deadzone applied
-    pub pickup_food: ButtonState,
-    pub pickup_launcher: ButtonState,
-    pub fire: ButtonState,     // throw food / fire launcher
-    pub pause: ButtonState,    // pause/unpause, ready-up, menu select
-    pub join: ButtonState,     // lobby join / menu confirm (South)
-    pub leave: ButtonState,    // lobby leave / menu back (East)
-    pub exit_game: ButtonState, // quit app (Select)
+    pub pickup_food: ButtonState,    // South: pick up food OR launcher (unified); drops current item
+    pub pickup_launcher: ButtonState, // West: pick up melee weapon; drops current melee weapon
+    pub fire: ButtonState,     // RT: throw food / fire launcher
+    pub melee: ButtonState,    // R1: baguette swing / lunch tray block+parry
+    pub pause: ButtonState,    // Start: pause/unpause, ready-up, menu select
+    pub join: ButtonState,     // South: lobby join / menu confirm
+    pub leave: ButtonState,    // East: lobby leave / menu back
+    pub exit_game: ButtonState, // Select: quit app
 }
 // ButtonState has: pressed, just_pressed, just_released
 // ControllerInput::aim_direction() → right stick, falls back to left stick, default Vec2::Y
@@ -172,9 +174,10 @@ Stored in `PlayerSlot::controller_id` (lobby) and `ControllerLink` (player entit
 |---|---|---|
 | Left stick | `LeftStickX/Y` | `move` (analog) |
 | Right stick | `RightStickX/Y` | `aim` (analog) |
-| South (A/X/B) | `South` | `pickup_food` / `join` |
-| West (X/□/Y) | `West` | `pickup_launcher` |
-| RT | `RightTrigger2` | `fire` |
+| South (A/X/B) | `South` | `pickup_food` / `join` — picks up food OR launcher, drops current |
+| West (X/□/Y) | `West` | `pickup_launcher` — picks up melee weapon, drops current |
+| RT | `RightTrigger2` | `fire` — throw food / fire launcher |
+| R1 | `RightTrigger` | `melee` — baguette swing / lunch tray block+parry |
 | Start | `Start` | `pause` |
 | East (B/○/A) | `East` | `leave` |
 | Select | `Select` | `exit_game` |
@@ -241,6 +244,32 @@ Indexed by `(player.id - 1)` (0–3). Updated in `combat/collision.rs`. Reset vi
 
 **Launcher alert rule:** `launcher_alert_system` (runs before `detection_system`) immediately forces **all NPCs** (Teacher, Principal, Lunch Lady) into `Chasing` toward the nearest player holding an `EquippedLauncher` — bypasses cone and distance checks entirely. Each NPC resumes normal detection once no player holds a launcher. Lunch Lady has `move_speed: 70.0` so she can chase when triggered (she is otherwise stationary at her patrol waypoint).
 
+### Melee Weapon System
+
+Two melee weapon types in `food/melee.rs`, picked up with West (`pickup_launcher` button):
+
+**LunchTray** (defensive only):
+- R1 `just_pressed` → adds `ParryWindow { timer: 0.2s }`. Food hitting the front arc (move-facing direction) during this window is deflected back at the thrower (`InFlight` spawned with reversed direction, `thrown_by = tray holder`).
+- R1 held past 0.2s → `ParryWindow` removed, `Blocking` added. Food in front arc is despawned (no damage).
+- R1 released → both `ParryWindow` and `Blocking` removed.
+- While `Blocking`: move speed drops to 25% (checked in `player/input.rs`).
+- "In front" = `dot(flight.direction, move_stick_normalized) < -0.4`.
+
+**Baguette** (offensive):
+- R1 `just_pressed` → melee swing. Deals 20 damage to players within 50px in a forward 120° arc (`dot(to_target, move_facing) > 0.5`). 0.7s swing cooldown, 15 uses.
+
+**Spawn points:** Two fixed locations at `(-280, 50)` and `(280, -50)`, 15s respawn, random LunchTray or Baguette each spawn. Systems: `setup_melee_spawns`, `melee_respawn_system`, `reset_melee_spawn_point_system` in `spawning.rs`.
+
+**Components:** `MeleeWeaponType`, `MeleeWeaponPickup`, `MeleeWeaponSpawnPoint`, `EquippedMeleeWeapon { weapon_type, swing_cooldown, uses_remaining }`, `ParryWindow { timer }`, `Blocking`, `MeleeVisual { player_entity }`.
+
+**Weapon visual overlay** (`sprites.rs`):
+- `MeleeVisual` is a separate sprite entity (z=1.2) that follows the player at their exact position.
+- Spawned by `spawn_melee_visuals` on `Added<EquippedMeleeWeapon>`, despawned by `despawn_melee_visuals` on `RemovedComponents<EquippedMeleeWeapon>`.
+- `sync_melee_visual_position` copies player transform each FixedUpdate tick.
+- `update_melee_animation` drives frame selection based on `ParryWindow`/`Blocking`/`ControllerInput::melee`:
+  - LunchTray: parry → col 3 (flash, looping); blocking → cols 4-5 loop 4fps; idle → col 2
+  - Baguette: just_pressed + cooldown ready → cols 3-5 one-shot 15fps; finished/idle → col 2
+
 ### Audio
 
 Sound effects use a simple event-driven pattern in `src/audio.rs`:
@@ -299,6 +328,50 @@ All gameplay entities use sprite atlases loaded from `assets/sprites/`. The map 
   - `food_splat_index(food_type)` maps food type → correct splat column
   - Helper: `effects_atlas_index(row, col)` (6 columns)
 
+- **Melee weapons** (`sprites/melee/melee_weapons.png`) — 32x32, 6×2 grid
+  - Columns: `ground_idle` (0), `ground_sparkle` (1), `equipped` (2), `active_1` (3), `active_2` (4), `active_3` (5)
+  - Row 0: LunchTray — col 3 = parry flash (bright white-gold, 2px glow), col 4 = block pulse A (gold), col 5 = block pulse B (dim gold)
+  - Row 1: Baguette — col 3 = swing windup (steep upward angle), col 4 = swing peak (diagonal + motion trail), col 5 = swing recovery (downward tilt + fading trail)
+  - Animation sequences: ground (0-1 loop 3fps), equipped (2 static), parry (3 flash), blocking (4-5 loop 4fps), baguette_swing (3-5 one-shot 15fps)
+  - Helpers: `melee_atlas_index(row, col)` (6 columns), `melee_weapon_type_row(weapon_type)`
+  - Metadata: `assets/sprites/melee/melee_weapons.json`
+
+### Sprite Generation
+
+All sprite atlases are generated by Python/Pillow scripts run inside Docker. **Never generate sprites by hand or with a different tool.**
+
+**Workflow:**
+
+```bash
+# Run a generation script (from project root):
+./sprites/run.sh <script_name.py>
+
+# Examples:
+./sprites/run.sh generate_melee.py
+./sprites/run.sh generate_launchers.py
+```
+
+`sprites/run.sh` mounts `sprites/` as `/scripts` and `assets/` as `/assets` inside a `python:3.12-slim` container with Pillow installed. Scripts write their output directly to `/assets/sprites/<category>/`.
+
+**Generation scripts live in `sprites/` (project root), NOT in `assets/sprites/`.** Output PNGs go to `assets/sprites/<category>/`.
+
+**Conventions for new sprite scripts:**
+
+1. Use a named color palette at the top (named constants like `TR_RIM`, `BA_CRUST`) — never use raw tuples inline.
+2. Draw pixel-by-pixel with a `px(img, x, y, color)` helper that bounds-checks.
+3. Use a `ROW_GENERATORS = [(row_index, draw_fn), ...]` registry so rows can be added without rewriting `main()`.
+4. For atlases that grow over time (like launchers), make the script **additive**: open the existing PNG, extend canvas if needed, draw only the new rows, save. For new atlases, create fresh.
+5. Each script must include a docstring describing the atlas layout (columns, rows, cell size, what each column/row means).
+6. After generating a PNG, add or update a matching `<name>.json` in the same `assets/sprites/<category>/` directory documenting tile_size, columns, rows, frame_labels, and per-type stats.
+7. After generating sprites and updating Rust code, verify with `cargo build`.
+
+**Existing generation scripts:**
+
+| Script | Output | Atlas |
+|---|---|---|
+| `sprites/generate_melee.py` | `assets/sprites/melee/melee_weapons.png` | 4×2, 32×32 |
+| `sprites/generate_launchers.py` | `assets/sprites/launchers/launchers.png` | 5×6, 32×32 (additive) |
+
 ### Map
 Procedural colored rectangles: floor=dark brown, walls=brown, tables=tan, counter=beige, door markers=lighter brown.
 
@@ -311,6 +384,9 @@ Procedural colored rectangles: floor=dark brown, walls=brown, tables=tan, counte
 - Pickup range: 70px
 - Food spawn respawn: 5 seconds
 - Launcher spawn: 1 point at center (0,0), 20-second respawn
+- Melee spawn: 2 points at (-280, 50) and (280, -50), 15-second respawn
+- Baguette swing range: 50px, 120° arc, 20 damage, 0.7s cooldown, 15 uses
+- Lunch tray parry window: 0.2s; blocking speed penalty: 25% of normal
 - Projectile max range: 400-600px
 - NPC detection: Teacher 150px/60deg, Principal 200px/90deg, LunchLady 80px/180deg
 - NPC chase speed: 1.3x normal
@@ -357,20 +433,6 @@ These tripped us up and will trip you up too:
 - Use `FixedUpdate` for gameplay, `Update` for UI
 - State gating: `.run_if(in_state(GameState::Playing))`
 - Event sending: `EventWriter::send(event)` — NOT `.write()` (that method does not exist in 0.15)
-
-## steamworks 0.12.2 API Notes
-
-These are different from older `steamworks-rs` examples you'll find online:
-
-- `Client` has **no generic parameters** — it's just `Client`, not `Client<ClientManager>`
-- `Client::init_app(app_id)` returns `Result<Client, SteamAPIInitError>` — **single value**, not a tuple `(Client, SingleClient)`
-- There is **no `SingleClient`** — `run_callbacks()` is a method on `Client` directly
-- `Client` is `Send + Sync` — store as a regular Bevy `Resource`, call `run_callbacks()` from any thread
-- Handle types (`InputHandle_t`, `InputActionSetHandle_t`, etc.) live in `steamworks::sys`, not the top-level crate — requires `features = ["raw-bindings"]` in `Cargo.toml`
-- `InputAnalogActionData_t` fields: `.x` and `.y` (lowercase)
-- `InputDigitalActionData_t` field: `.bState` (camelCase — matches the C struct)
-- `Input` struct also has no generic parameters: `steamworks::Input`, not `Input<ClientManager>`
-- steam_appid.txt with value `480` in the working directory lets you run without Steam launching the app (uses Valve's SpaceWar test app)
 
 ## Reference Docs
 

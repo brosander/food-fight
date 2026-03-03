@@ -1,48 +1,97 @@
 use bevy::prelude::*;
 
 use super::components::*;
+use super::launcher::{ChargingShot, EquippedLauncher, LauncherPickup, LauncherType};
 use crate::audio::SoundEvent;
 use crate::input::ControllerInput;
 use crate::player::components::Eliminated;
-use crate::sprites::{AnimationState, FrameRange, SpriteAssets, food_atlas_index, food_type_row};
+use crate::sprites::{
+    AnimationState, FrameRange, SpriteAssets, food_atlas_index, food_type_row,
+};
 use crate::states::Gameplay;
 
 const PICKUP_RANGE: f32 = 70.0;
 
-/// Pickup system: when player presses South (A/Cross) near a Throwable food, add it to inventory.
+/// Unified pickup system: South button picks up the nearest food or launcher.
+/// If the player already holds something, it is dropped to the ground first.
 pub fn pickup_system(
     mut commands: Commands,
     mut sound: EventWriter<SoundEvent>,
-    players: Query<(Entity, &Transform, &ControllerInput, &Inventory), Without<Eliminated>>,
+    mut players: Query<
+        (
+            Entity,
+            &Transform,
+            &ControllerInput,
+            &mut Inventory,
+            Option<&EquippedLauncher>,
+        ),
+        Without<Eliminated>,
+    >,
     food_items: Query<(Entity, &Transform, &FoodItem), With<Throwable>>,
+    launchers: Query<(Entity, &Transform, &LauncherPickup)>,
 ) {
-    for (player_entity, player_tf, input, inventory) in &players {
-        if inventory.held_food.is_some() {
-            continue;
-        }
-
+    for (player_entity, player_tf, input, mut inventory, equipped_launcher) in &mut players {
         if !input.pickup_food.just_pressed {
             continue;
         }
 
-        // Find nearest food in range
-        let mut nearest: Option<(Entity, f32, FoodType)> = None;
+        let player_pos = player_tf.translation.truncate();
+
+        // Find nearest item (food or launcher) within range
+        enum NearestItem {
+            Food(Entity, FoodType),
+            Launcher(Entity, LauncherType),
+        }
+
+        let mut nearest: Option<(f32, NearestItem)> = None;
+
         for (food_entity, food_tf, food_item) in &food_items {
-            let dist = player_tf
-                .translation
-                .truncate()
-                .distance(food_tf.translation.truncate());
-            if dist < PICKUP_RANGE && (nearest.is_none() || dist < nearest.as_ref().unwrap().1) {
-                nearest = Some((food_entity, dist, food_item.food_type));
+            let dist = player_pos.distance(food_tf.translation.truncate());
+            if dist < PICKUP_RANGE {
+                if nearest.is_none() || dist < nearest.as_ref().unwrap().0 {
+                    nearest = Some((dist, NearestItem::Food(food_entity, food_item.food_type)));
+                }
             }
         }
 
-        if let Some((food_entity, _, food_type)) = nearest {
-            commands.entity(food_entity).despawn();
-            commands.entity(player_entity).insert(Inventory {
-                held_food: Some(food_type),
-            });
-            sound.send(SoundEvent::FoodPickup);
+        for (launcher_entity, launcher_tf, pickup) in &launchers {
+            let dist = player_pos.distance(launcher_tf.translation.truncate());
+            if dist < PICKUP_RANGE {
+                if nearest.is_none() || dist < nearest.as_ref().unwrap().0 {
+                    nearest = Some((dist, NearestItem::Launcher(launcher_entity, pickup.launcher_type)));
+                }
+            }
+        }
+
+        let Some((_, item)) = nearest else { continue };
+
+        // Destroy whatever the player is currently holding
+        if inventory.held_food.is_some() {
+            inventory.held_food = None;
+        } else if equipped_launcher.is_some() {
+            commands
+                .entity(player_entity)
+                .remove::<EquippedLauncher>()
+                .remove::<ChargingShot>();
+        }
+
+        // Pick up the nearest item
+        match item {
+            NearestItem::Food(food_entity, food_type) => {
+                commands.entity(food_entity).despawn();
+                inventory.held_food = Some(food_type);
+                sound.send(SoundEvent::FoodPickup);
+            }
+            NearestItem::Launcher(launcher_entity, launcher_type) => {
+                let stats = launcher_type.stats();
+                commands.entity(launcher_entity).despawn();
+                commands.entity(player_entity).insert(EquippedLauncher {
+                    launcher_type,
+                    cooldown_timer: Timer::from_seconds(stats.cooldown_secs, TimerMode::Once),
+                    uses_remaining: stats.uses,
+                });
+                sound.send(SoundEvent::LauncherPickup);
+            }
         }
     }
 }

@@ -2,8 +2,14 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use super::components::*;
-use crate::sprites::{AnimationState, FrameRange, SpriteAssets, food_atlas_index, food_type_row};
+use crate::sprites::{
+    AnimationState, FrameRange, SpriteAssets, food_atlas_index, food_type_row,
+    melee_atlas_index, melee_weapon_type_row,
+};
 use crate::states::Gameplay;
+
+const MELEE_RESPAWN_SECS: f32 = 15.0;
+const MELEE_SPAWN_POSITIONS: &[(f32, f32)] = &[(-280.0, 50.0), (280.0, -50.0)];
 
 /// Hardcoded food spawn positions for the placeholder arena.
 const SPAWN_POSITIONS: &[(f32, f32)] = &[
@@ -116,6 +122,131 @@ pub fn reset_spawn_point_system(
         if !has_food {
             spawn_point.active = false;
             spawn_point.respawn_timer.reset();
+        }
+    }
+}
+
+/// Creates melee weapon spawn point markers and places initial pickups.
+pub fn setup_melee_spawns(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
+    let mut rng = rand::thread_rng();
+
+    for &(x, y) in MELEE_SPAWN_POSITIONS {
+        let weapon_type = if rng.gen_bool(0.5) {
+            MeleeWeaponType::LunchTray
+        } else {
+            MeleeWeaponType::Baguette
+        };
+        let row = melee_weapon_type_row(&weapon_type);
+
+        commands.spawn((
+            Transform::from_xyz(x, y, 0.0),
+            MeleeWeaponSpawnPoint {
+                respawn_timer: Timer::from_seconds(MELEE_RESPAWN_SECS, TimerMode::Once),
+                active: true,
+            },
+            Gameplay,
+        ));
+
+        commands.spawn((
+            Sprite {
+                image: sprite_assets.melee_image.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: sprite_assets.melee_layout.clone(),
+                    index: melee_atlas_index(row, 0),
+                }),
+                custom_size: Some(Vec2::splat(32.0)),
+                ..default()
+            },
+            Transform::from_xyz(x, y, 0.6),
+            MeleeWeaponPickup { weapon_type },
+            AnimationState::new(
+                "ground",
+                FrameRange {
+                    start: melee_atlas_index(row, 0),
+                    end: melee_atlas_index(row, 1),
+                    fps: 3.0,
+                    looping: true,
+                },
+            ),
+            Gameplay,
+        ));
+    }
+}
+
+/// Respawns a melee weapon at each spawn point when the timer expires.
+pub fn melee_respawn_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    sprite_assets: Res<SpriteAssets>,
+    mut spawn_points: Query<(&Transform, &mut MeleeWeaponSpawnPoint)>,
+) {
+    let mut rng = rand::thread_rng();
+
+    for (transform, mut sp) in &mut spawn_points {
+        if sp.active {
+            continue;
+        }
+
+        sp.respawn_timer.tick(time.delta());
+        if !sp.respawn_timer.finished() {
+            continue;
+        }
+
+        let weapon_type = if rng.gen_bool(0.5) {
+            MeleeWeaponType::LunchTray
+        } else {
+            MeleeWeaponType::Baguette
+        };
+        let row = melee_weapon_type_row(&weapon_type);
+
+        commands.spawn((
+            Sprite {
+                image: sprite_assets.melee_image.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: sprite_assets.melee_layout.clone(),
+                    index: melee_atlas_index(row, 0),
+                }),
+                custom_size: Some(Vec2::splat(32.0)),
+                ..default()
+            },
+            Transform::from_xyz(transform.translation.x, transform.translation.y, 0.6),
+            MeleeWeaponPickup { weapon_type },
+            AnimationState::new(
+                "ground",
+                FrameRange {
+                    start: melee_atlas_index(row, 0),
+                    end: melee_atlas_index(row, 1),
+                    fps: 3.0,
+                    looping: true,
+                },
+            ),
+            Gameplay,
+        ));
+
+        sp.active = true;
+    }
+}
+
+/// Resets the melee spawn point timer when the pickup is gone.
+pub fn reset_melee_spawn_point_system(
+    pickups: Query<&Transform, With<MeleeWeaponPickup>>,
+    mut spawn_points: Query<(&Transform, &mut MeleeWeaponSpawnPoint)>,
+) {
+    for (sp_tf, mut sp) in &mut spawn_points {
+        if !sp.active {
+            continue;
+        }
+
+        let has_pickup = pickups.iter().any(|tf| {
+            tf.translation
+                .truncate()
+                .distance(sp_tf.translation.truncate())
+                < 10.0
+        });
+
+        if !has_pickup {
+            sp.active = false;
+            sp.respawn_timer.reset();
         }
     }
 }

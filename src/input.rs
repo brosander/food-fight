@@ -20,6 +20,7 @@ pub struct ControllerInput {
     pub pickup_food: ButtonState,
     pub pickup_launcher: ButtonState,
     pub fire: ButtonState,
+    pub melee: ButtonState,
     pub pause: ButtonState,
     pub join: ButtonState,
     pub leave: ButtonState,
@@ -155,6 +156,11 @@ fn build_input_from_gamepad(gamepad: &Gamepad) -> ControllerInput {
             pressed: gamepad.pressed(GamepadButton::RightTrigger2),
             just_pressed: gamepad.just_pressed(GamepadButton::RightTrigger2),
             just_released: gamepad.just_released(GamepadButton::RightTrigger2),
+        },
+        melee: ButtonState {
+            pressed: gamepad.pressed(GamepadButton::RightTrigger),
+            just_pressed: gamepad.just_pressed(GamepadButton::RightTrigger),
+            just_released: gamepad.just_released(GamepadButton::RightTrigger),
         },
         pause: ButtonState {
             pressed: gamepad.pressed(GamepadButton::Start),

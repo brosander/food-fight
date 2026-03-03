@@ -1,5 +1,6 @@
 pub mod components;
 pub mod launcher;
+pub mod melee;
 pub mod spawning;
 pub mod throwing;
 pub mod trajectory;
@@ -18,6 +19,7 @@ impl Plugin for FoodPlugin {
                 spawning::setup_food_spawns,
                 spawning::initial_food_spawn,
                 launcher::setup_launcher_spawns,
+                spawning::setup_melee_spawns,
             )
                 .run_if(not(resource_exists::<GameSessionActive>)),
         )
@@ -30,9 +32,13 @@ impl Plugin for FoodPlugin {
                 throwing::throw_system,
                 launcher::launcher_respawn_system,
                 launcher::reset_launcher_spawn_point_system,
-                launcher::launcher_pickup_system,
                 launcher::launcher_fire_system,
                 launcher::catapult_charge_system,
+                melee::melee_pickup_system,
+                melee::melee_block_system,
+                melee::baguette_swing_system,
+                spawning::melee_respawn_system,
+                spawning::reset_melee_spawn_point_system,
                 trajectory::straight_trajectory_system,
                 trajectory::arc_trajectory_system,
                 trajectory::bounce_trajectory_system,

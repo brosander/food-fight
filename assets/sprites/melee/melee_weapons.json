@@ -1,0 +1,54 @@
+{
+  "texture": "sprites/melee/melee_weapons.png",
+  "tile_size": [32, 32],
+  "columns": 6,
+  "rows": 2,
+  "total_frames": 12,
+  "frame_labels": [
+    "ground_idle",
+    "ground_sparkle",
+    "equipped",
+    "active_1",
+    "active_2",
+    "active_3"
+  ],
+  "animation_sequences": {
+    "ground":   {"cols": [0, 1], "fps": 3,  "loop": true},
+    "equipped": {"cols": [2],    "fps": 3,  "loop": true},
+    "lunch_tray_parry":   {"cols": [3],    "fps": 15, "loop": false},
+    "lunch_tray_blocking":{"cols": [4, 5], "fps": 4,  "loop": true},
+    "baguette_swing":     {"cols": [3, 4, 5], "fps": 15, "loop": false}
+  },
+  "melee_weapon_types": {
+    "lunch_tray": {
+      "row": 0,
+      "entity_size": [36, 28],
+      "uses": 999,
+      "mechanic": "block_parry",
+      "parry_window_secs": 0.2,
+      "block_speed_scale": 0.25,
+      "ground_frame": 0,
+      "ground_sparkle_frame": 1,
+      "equipped_frame": 2,
+      "parry_flash_frame": 3,
+      "block_pulse_a_frame": 4,
+      "block_pulse_b_frame": 5
+    },
+    "baguette": {
+      "row": 1,
+      "entity_size": [40, 10],
+      "uses": 15,
+      "mechanic": "melee_swing",
+      "swing_cooldown_secs": 0.7,
+      "swing_damage": 20,
+      "swing_range_px": 50,
+      "swing_arc_deg": 120,
+      "ground_frame": 0,
+      "ground_sparkle_frame": 1,
+      "equipped_frame": 2,
+      "swing_windup_frame": 3,
+      "swing_peak_frame": 4,
+      "swing_recovery_frame": 5
+    }
+  }
+}
