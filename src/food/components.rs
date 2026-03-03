@@ -200,6 +200,10 @@ pub struct EquippedMeleeWeapon {
     pub weapon_type: MeleeWeaponType,
     pub swing_cooldown: Timer,
     pub uses_remaining: u32,
+    /// Set to true the frame a baguette swing fires; cleared by the animation system.
+    pub swinging: bool,
+    /// Direction the player was facing when the last baguette swing fired.
+    pub swing_facing: Vec2,
 }
 
 /// Added on R1 just_pressed (0.2s window). Food hitting the front arc during this window is deflected.

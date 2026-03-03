@@ -73,6 +73,8 @@ pub fn melee_pickup_system(
             weapon_type,
             swing_cooldown: Timer::from_seconds(cooldown, TimerMode::Once),
             uses_remaining: uses,
+            swinging: false,
+            swing_facing: Vec2::Y,
         });
         sound.send(SoundEvent::LauncherPickup);
     }
@@ -238,6 +240,8 @@ pub fn baguette_swing_system(
             }
         }
 
+        weapon.swinging = true;
+        weapon.swing_facing = facing;
         weapon.swing_cooldown.reset();
         weapon.uses_remaining -= 1;
         if weapon.uses_remaining == 0 {

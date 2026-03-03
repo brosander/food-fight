@@ -264,18 +264,52 @@ fn despawn_melee_visuals(
     }
 }
 
-/// Keeps the weapon overlay sprite centred on the owning player each tick.
+/// Keeps the weapon overlay sprite on the owning player each tick.
+/// Baguette swing: arcs right-to-left relative to facing, peaking forward at mid-frame.
+/// LunchTray parry/block: shifts forward in the facing direction and rotates to match.
 fn sync_melee_visual_position(
-    players: Query<&Transform, (With<Player>, Without<MeleeVisual>)>,
-    mut visuals: Query<(&MeleeVisual, &mut Transform)>,
+    players: Query<
+        (&Transform, &ControllerInput, Option<&EquippedMeleeWeapon>, Option<&ParryWindow>, Option<&Blocking>),
+        (With<Player>, Without<MeleeVisual>),
+    >,
+    mut visuals: Query<(&MeleeVisual, &AnimationState, &mut Transform)>,
 ) {
-    for (visual, mut tf) in &mut visuals {
-        if let Ok(player_tf) = players.get(visual.player_entity) {
-            tf.translation = Vec3::new(
-                player_tf.translation.x,
-                player_tf.translation.y,
-                1.2,
-            );
+    for (visual, anim, mut tf) in &mut visuals {
+        let Ok((player_tf, input, weapon, parry, blocking)) = players.get(visual.player_entity) else {
+            continue;
+        };
+
+        let base = Vec3::new(player_tf.translation.x, player_tf.translation.y, 1.2);
+
+        match weapon {
+            Some(w) if w.weapon_type == MeleeWeaponType::Baguette
+                && anim.current_anim == "swing" && !anim.finished =>
+            {
+                let range_len = (anim.frame_range.end - anim.frame_range.start) as f32;
+                let t = if range_len > 0.0 {
+                    (anim.current_frame - anim.frame_range.start) as f32 / range_len
+                } else {
+                    0.0
+                };
+                let forward = Vec3::new(w.swing_facing.x, w.swing_facing.y, 0.0);
+                let right = Vec3::new(w.swing_facing.y, -w.swing_facing.x, 0.0);
+                let lateral = right * (1.0 - 2.0 * t) * 22.0;
+                let fwd_dist = 15.0 + 15.0 * (1.0 - (2.0 * t - 1.0).powi(2));
+                tf.translation = base + forward * fwd_dist + lateral;
+                tf.rotation = Quat::IDENTITY;
+            }
+            Some(w) if w.weapon_type == MeleeWeaponType::LunchTray
+                && (parry.is_some() || blocking.is_some()) =>
+            {
+                let s = input.move_stick;
+                let facing = if s != Vec2::ZERO { s.normalize() } else { Vec2::Y };
+                tf.translation = base + Vec3::new(facing.x, facing.y, 0.0) * 20.0;
+                tf.rotation = Quat::from_rotation_z(facing.to_angle());
+            }
+            _ => {
+                tf.translation = base;
+                tf.rotation = Quat::IDENTITY;
+            }
         }
     }
 }
@@ -292,16 +326,15 @@ fn sync_melee_visual_position(
 /// frame is never skipped (set_animation doesn't update atlas.index, animate_sprites
 /// only does it on timer fire).
 fn update_melee_animation(
-    players: Query<(
-        &ControllerInput,
-        &EquippedMeleeWeapon,
+    mut players: Query<(
+        &mut EquippedMeleeWeapon,
         Option<&ParryWindow>,
         Option<&Blocking>,
     )>,
     mut visuals: Query<(&MeleeVisual, &mut AnimationState, &mut Sprite)>,
 ) {
     for (visual, mut anim, mut sprite) in &mut visuals {
-        let Ok((input, weapon, parry, blocking)) = players.get(visual.player_entity) else {
+        let Ok((mut weapon, parry, blocking)) = players.get_mut(visual.player_entity) else {
             continue;
         };
         let row = melee_weapon_type_row(&weapon.weapon_type);
@@ -309,7 +342,7 @@ fn update_melee_animation(
 
         match weapon.weapon_type {
             MeleeWeaponType::Baguette => {
-                if input.melee.just_pressed && weapon.swing_cooldown.finished() {
+                if weapon.swinging {
                     sprite.color = Color::WHITE;
                     anim.set_animation(
                         "swing",
@@ -320,6 +353,7 @@ fn update_melee_animation(
                             looping: false,
                         },
                     );
+                    weapon.swinging = false;
                 } else if anim.current_anim == "swing" && !anim.finished {
                     // Keep visible while swing is playing
                     sprite.color = Color::WHITE;
