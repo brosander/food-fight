@@ -291,12 +291,23 @@ fn sync_melee_visual_position(
                 } else {
                     0.0
                 };
-                let forward = Vec3::new(w.swing_facing.x, w.swing_facing.y, 0.0);
-                let right = Vec3::new(w.swing_facing.y, -w.swing_facing.x, 0.0);
-                let lateral = right * (1.0 - 2.0 * t) * 22.0;
-                let fwd_dist = 15.0 + 15.0 * (1.0 - (2.0 * t - 1.0).powi(2));
-                tf.translation = base + forward * fwd_dist + lateral;
-                tf.rotation = Quat::IDENTITY;
+
+                // Rotate around a pivot near the player's hand so the handle stays
+                // put while the tip sweeps right-to-left through the facing direction.
+                // Baguette sprite tip is at local +X, handle at -X.
+                let sweep = 65.0_f32.to_radians();
+                let swing_rot = w.swing_facing.to_angle()
+                    - sweep
+                    + t * 2.0 * sweep;
+
+                // Handle anchored slightly ahead of the player
+                let handle = base.truncate() + w.swing_facing * 6.0;
+                // Local +X after Z rotation by swing_rot
+                let tip_dir = Vec2::new(swing_rot.cos(), swing_rot.sin());
+                let center = handle + tip_dir * 16.0; // half of 32px sprite
+
+                tf.translation = Vec3::new(center.x, center.y, 1.2);
+                tf.rotation = Quat::from_rotation_z(swing_rot);
             }
             Some(w) if w.weapon_type == MeleeWeaponType::LunchTray
                 && (parry.is_some() || blocking.is_some()) =>
@@ -304,7 +315,7 @@ fn sync_melee_visual_position(
                 let s = input.move_stick;
                 let facing = if s != Vec2::ZERO { s.normalize() } else { Vec2::Y };
                 tf.translation = base + Vec3::new(facing.x, facing.y, 0.0) * 20.0;
-                tf.rotation = Quat::from_rotation_z(facing.to_angle());
+                tf.rotation = Quat::from_rotation_z(facing.to_angle() + std::f32::consts::FRAC_PI_2);
             }
             _ => {
                 tf.translation = base;
