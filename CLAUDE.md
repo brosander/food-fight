@@ -239,7 +239,7 @@ Indexed by `(player.id - 1)` (0–3). Updated in `combat/collision.rs`. Reset vi
 
 `NpcState` enum: `Patrolling` → `Suspicious` → `Chasing` → `Returning` → `Patrolling`. Detection uses cone check (angle + distance). NPCs change sprite color based on state (yellow=suspicious, red=chasing). Three NPCs: Teacher (medium speed, patrols tables), Principal (slow, wide detection), Lunch Lady (stationary at counter). Janitor is a planned fourth role (not yet spawned).
 
-**Teacher special rule:** `teacher_launcher_alert_system` (runs before `detection_system`) immediately forces Teacher into `Chasing` toward the nearest player holding an `EquippedLauncher` — bypasses cone and distance checks entirely. Teacher resumes normal detection once no player holds a launcher.
+**Launcher alert rule:** `launcher_alert_system` (runs before `detection_system`) immediately forces **all NPCs** (Teacher, Principal, Lunch Lady) into `Chasing` toward the nearest player holding an `EquippedLauncher` — bypasses cone and distance checks entirely. Each NPC resumes normal detection once no player holds a launcher. Lunch Lady has `move_speed: 70.0` so she can chase when triggered (she is otherwise stationary at her patrol waypoint).
 
 ### Audio
 

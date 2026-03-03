@@ -29,7 +29,7 @@ pub fn chase_system(
         if dist > 1.0 {
             let direction = to_player.normalize();
             facing.0 = direction;
-            let speed = if npc.role == NpcRole::Teacher && enraged.is_some() {
+            let speed = if enraged.is_some() {
                 PLAYER_SPEED * 1.2 // 240 px/s — 20% faster than a student
             } else {
                 npc.move_speed * 1.3

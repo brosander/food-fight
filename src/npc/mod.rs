@@ -23,7 +23,7 @@ impl Plugin for NpcPlugin {
                 FixedUpdate,
                 (
                     detection::suspicion_system,
-                    detection::teacher_launcher_alert_system,
+                    detection::launcher_alert_system,
                     detection::detection_system,
                     patrol::patrol_system,
                     patrol::returning_system,
@@ -140,7 +140,7 @@ fn spawn_npcs(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
             role: NpcRole::LunchLady,
             detection_radius: 80.0,
             detection_angle: PI, // Full front hemisphere
-            move_speed: 0.0,    // Stationary
+            move_speed: 70.0,   // Normally stationary (at her waypoint), but can chase
             catch_radius: 40.0,
         },
         NpcState::Patrolling { waypoint_index: 0 },

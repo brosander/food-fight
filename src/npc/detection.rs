@@ -5,16 +5,12 @@ use crate::food::components::InFlight;
 use crate::food::launcher::EquippedLauncher;
 use crate::player::components::{Eliminated, Player};
 
-/// Teachers immediately chase any player holding a launcher, bypassing cone/distance checks.
-pub fn teacher_launcher_alert_system(
+/// All authority NPCs immediately chase any player holding a launcher, bypassing cone/distance checks.
+pub fn launcher_alert_system(
     mut npcs: Query<(&NpcAuthority, &mut NpcState, &Transform)>,
     players: Query<(Entity, &Transform), (With<Player>, With<EquippedLauncher>, Without<Eliminated>)>,
 ) {
-    for (npc, mut state, npc_tf) in &mut npcs {
-        if npc.role != NpcRole::Teacher {
-            continue;
-        }
-
+    for (_npc, mut state, npc_tf) in &mut npcs {
         let target = players
             .iter()
             .min_by(|(_, a), (_, b)| {
