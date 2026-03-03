@@ -1,18 +1,20 @@
 use bevy::prelude::*;
 
-use super::components::*;
+use super::components::{Caught, Enraged, Facing, NpcAuthority, NpcRole, NpcState};
 use crate::audio::SoundEvent;
 use crate::food::components::Inventory;
 use crate::food::launcher::EquippedLauncher;
 use crate::player::components::{Eliminated, Player};
 
+const PLAYER_SPEED: f32 = 200.0;
+
 /// Chasing NPC moves toward target player.
 pub fn chase_system(
     time: Res<Time>,
-    mut npcs: Query<(&NpcAuthority, &NpcState, &mut Transform, &mut Facing)>,
+    mut npcs: Query<(&NpcAuthority, &NpcState, &mut Transform, &mut Facing, Option<&Enraged>)>,
     players: Query<&Transform, (With<Player>, Without<NpcAuthority>, Without<Eliminated>)>,
 ) {
-    for (npc, state, mut npc_tf, mut facing) in &mut npcs {
+    for (npc, state, mut npc_tf, mut facing, enraged) in &mut npcs {
         let NpcState::Chasing { target } = state else {
             continue;
         };
@@ -27,8 +29,12 @@ pub fn chase_system(
         if dist > 1.0 {
             let direction = to_player.normalize();
             facing.0 = direction;
-            // Chase speed is 1.3x normal speed
-            let movement = direction * npc.move_speed * 1.3 * time.delta_secs();
+            let speed = if npc.role == NpcRole::Teacher && enraged.is_some() {
+                PLAYER_SPEED * 1.2 // 240 px/s — 20% faster than a student
+            } else {
+                npc.move_speed * 1.3
+            };
+            let movement = direction * speed * time.delta_secs();
             npc_tf.translation.x += movement.x;
             npc_tf.translation.y += movement.y;
         }
@@ -39,10 +45,10 @@ pub fn chase_system(
 pub fn catch_system(
     mut commands: Commands,
     mut sound: EventWriter<SoundEvent>,
-    npcs: Query<(&NpcAuthority, &NpcState, &Transform)>,
+    npcs: Query<(Entity, &NpcAuthority, &NpcState, &Transform)>,
     players: Query<(Entity, &Transform, Option<&Caught>), (With<Player>, Without<Eliminated>)>,
 ) {
-    for (npc, state, npc_tf) in &npcs {
+    for (npc_entity, npc, state, npc_tf) in &npcs {
         let NpcState::Chasing { target } = state else {
             continue;
         };
@@ -73,6 +79,8 @@ pub fn catch_system(
                     stun_timer: Timer::from_seconds(stun_duration, TimerMode::Once),
                 });
                 sound.send(SoundEvent::PlayerCaught);
+                // Cool down: enrage ends once the teacher catches their target
+                commands.entity(npc_entity).remove::<Enraged>();
             }
         }
     }

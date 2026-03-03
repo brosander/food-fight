@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::audio::SoundEvent;
 use crate::food::components::*;
 use crate::food::launcher::{ChargingShot, EquippedLauncher};
+use crate::npc::components::{Enraged, NpcAuthority, NpcRole, NpcState};
 use crate::player::components::{Eliminated, Health, Player};
 use crate::score::{CumulativeScores, RoundScores};
 use crate::sprites::{AnimationState, FrameRange, SpriteAssets, effects_atlas_index};
@@ -112,6 +113,75 @@ pub fn food_player_collision_system(
 
                 break;
             }
+        }
+    }
+}
+
+/// AABB collision between InFlight food and Teacher NPCs.
+/// On hit: Teacher becomes Enraged (chase speed → 400 px/s) and immediately
+/// targets the student who threw the food. Projectile is despawned.
+pub fn food_teacher_collision_system(
+    mut commands: Commands,
+    mut sound: EventWriter<SoundEvent>,
+    projectiles: Query<(Entity, &Transform, &InFlight)>,
+    mut teachers: Query<(Entity, &Transform, &NpcAuthority, &mut NpcState)>,
+    sprite_assets: Res<SpriteAssets>,
+) {
+    const TEACHER_HALF: Vec2 = Vec2::new(14.0, 14.0);
+
+    for (proj_entity, proj_tf, flight) in &projectiles {
+        let proj_pos = proj_tf.translation.truncate();
+        let proj_half = Vec2::new(6.0, 6.0);
+
+        for (teacher_entity, teacher_tf, npc, mut state) in &mut teachers {
+            if npc.role != NpcRole::Teacher {
+                continue;
+            }
+
+            let teacher_pos = teacher_tf.translation.truncate();
+            if !aabb_overlap(proj_pos, proj_half, teacher_pos, TEACHER_HALF) {
+                continue;
+            }
+
+            // Mark enraged and redirect chase toward the thrower
+            commands.entity(teacher_entity).insert(Enraged);
+            *state = NpcState::Chasing { target: flight.thrown_by };
+            sound.send(SoundEvent::FoodHit);
+
+            // Spawn hit flash on the teacher
+            let hit_start = effects_atlas_index(0, 0);
+            commands.spawn((
+                Sprite {
+                    image: sprite_assets.effects_image.clone(),
+                    texture_atlas: Some(TextureAtlas {
+                        layout: sprite_assets.effects_layout.clone(),
+                        index: hit_start,
+                    }),
+                    custom_size: Some(Vec2::new(24.0, 24.0)),
+                    ..default()
+                },
+                Transform::from_xyz(
+                    teacher_tf.translation.x,
+                    teacher_tf.translation.y,
+                    3.0,
+                ),
+                AnimationState::new(
+                    "hit_flash",
+                    FrameRange {
+                        start: effects_atlas_index(0, 0),
+                        end: effects_atlas_index(0, 5),
+                        fps: 15.0,
+                        looping: false,
+                    },
+                ),
+                SplatEffect {
+                    lifetime: Timer::from_seconds(0.4, TimerMode::Once),
+                },
+                Gameplay,
+            ));
+
+            commands.entity(proj_entity).despawn();
+            break;
         }
     }
 }

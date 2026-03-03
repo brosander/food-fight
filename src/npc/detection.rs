@@ -54,10 +54,10 @@ pub fn suspicion_system(
 /// Detection cone check: sees if a Suspicious player is within NPC's FOV.
 pub fn detection_system(
     time: Res<Time>,
-    mut npcs: Query<(&NpcAuthority, &mut NpcState, &Transform, &Facing, &PatrolPath)>,
+    mut npcs: Query<(&NpcAuthority, &mut NpcState, &Transform, &Facing, &PatrolPath, Option<&Enraged>)>,
     players: Query<(Entity, &Transform), (With<Player>, With<Suspicious>, Without<Eliminated>)>,
 ) {
-    for (npc, mut state, npc_tf, facing, path) in &mut npcs {
+    for (npc, mut state, npc_tf, facing, path, enraged) in &mut npcs {
         match state.as_mut() {
             NpcState::Patrolling { .. } => {
                 // Look for suspicious players in detection cone
@@ -96,6 +96,11 @@ pub fn detection_system(
                 }
             }
             NpcState::Chasing { target } => {
+                // Enraged teachers ignore detection rules — they know who hit them
+                if enraged.is_some() {
+                    continue;
+                }
+
                 // Check if we can still see the target (wider radius)
                 let can_see = players.get(*target).is_ok_and(|(_, player_tf)| {
                     let dist = npc_tf
