@@ -127,6 +127,8 @@ pub struct ChargingShot {
 }
 
 const LAUNCHER_RESPAWN_SECS: f32 = 20.0;
+/// Projectiles must always outrun a player (player speed = 200 px/s).
+const MIN_PROJECTILE_SPEED: f32 = 250.0;
 
 /// Spawn the single center launcher spawn point and its initial pickup.
 pub fn setup_launcher_spawns(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
@@ -326,7 +328,7 @@ pub fn launcher_fire_system(
         let stats = launcher.launcher_type.stats();
 
         let base_damage = 10.0 * stats.damage_multiplier;
-        let base_speed = 300.0 * stats.speed_multiplier;
+        let base_speed = (300.0 * stats.speed_multiplier).max(MIN_PROJECTILE_SPEED);
         let base_range = 400.0 * stats.range_multiplier;
 
         let row = launcher_type_row(&launcher.launcher_type);
@@ -436,7 +438,7 @@ pub fn catapult_charge_system(
 
                 let stats = launcher.launcher_type.stats();
                 let base_damage = 10.0 * stats.damage_multiplier * (0.5 + charge_fraction * 1.5);
-                let base_speed = 200.0 * stats.speed_multiplier * (0.5 + charge_fraction);
+                let base_speed = (200.0 * stats.speed_multiplier * (0.5 + charge_fraction)).max(MIN_PROJECTILE_SPEED);
                 let base_range = 400.0 * stats.range_multiplier * (0.5 + charge_fraction);
 
                 let mut proj = commands.spawn((
