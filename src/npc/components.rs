@@ -63,7 +63,7 @@ pub struct Caught {
     pub stun_timer: Timer,
 }
 
-/// Applied to a Teacher NPC when struck by a food projectile.
-/// While present, the Teacher chases at 2× player speed (400 px/s).
+/// Applied to any NPC authority figure when struck by a food projectile.
+/// While present, the NPC chases at 240 px/s (1.2× player speed).
 #[derive(Component)]
 pub struct Enraged;

@@ -10,7 +10,11 @@ pub fn launcher_alert_system(
     mut npcs: Query<(&NpcAuthority, &mut NpcState, &Transform)>,
     players: Query<(Entity, &Transform), (With<Player>, With<EquippedLauncher>, Without<Eliminated>)>,
 ) {
-    for (_npc, mut state, npc_tf) in &mut npcs {
+    for (npc, mut state, npc_tf) in &mut npcs {
+        // Lunch Lady is stationary — launcher alerts don't reach her
+        if npc.role == NpcRole::LunchLady {
+            continue;
+        }
         let target = players
             .iter()
             .min_by(|(_, a), (_, b)| {

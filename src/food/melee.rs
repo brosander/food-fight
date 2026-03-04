@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use super::components::*;
 use crate::audio::SoundEvent;
 use crate::input::ControllerInput;
+use crate::npc::components::{Enraged, NpcAuthority, NpcState};
 use crate::player::components::{Eliminated, Health, Player};
 use crate::score::{CumulativeScores, RoundScores};
 use crate::sprites::{
@@ -144,6 +145,7 @@ pub fn baguette_swing_system(
     mut targets: Query<
         (Entity, &Transform, &Player, &mut Health, Option<&Eliminated>),
     >,
+    mut npcs: Query<(Entity, &Transform, &NpcAuthority, &mut NpcState)>,
     mut round: ResMut<RoundScores>,
     mut scores: ResMut<CumulativeScores>,
 ) {
@@ -238,6 +240,21 @@ pub fn baguette_swing_system(
                 round.add_detention(idx);
                 scores.add_detention(idx);
             }
+        }
+
+        // Enrage any NPC hit in the swing arc
+        for (npc_entity, npc_tf, _npc, mut npc_state) in &mut npcs {
+            let to_npc = npc_tf.translation.truncate() - attacker_pos;
+            let dist = to_npc.length();
+            if dist > BAGUETTE_SWING_RANGE {
+                continue;
+            }
+            if dist > 0.0 && to_npc.normalize().dot(facing) < 0.5 {
+                continue;
+            }
+            commands.entity(npc_entity).insert(Enraged);
+            *npc_state = NpcState::Chasing { target: attacker_entity };
+            sound.send(SoundEvent::FoodHit);
         }
 
         weapon.swinging = true;

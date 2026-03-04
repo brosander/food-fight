@@ -12,7 +12,7 @@ impl Plugin for CombatPlugin {
             FixedUpdate,
             (
                 collision::food_player_collision_system,
-                collision::food_teacher_collision_system,
+                collision::food_npc_collision_system,
             )
                 .run_if(in_state(GameState::Playing)),
         );
