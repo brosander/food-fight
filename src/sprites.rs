@@ -108,6 +108,8 @@ pub struct SpriteAssets {
 
     pub melee_image: Handle<Image>,
     pub melee_layout: Handle<TextureAtlasLayout>,
+
+    pub cafeteria_bg: Handle<Image>,
 }
 
 // --- Loading ---
@@ -196,6 +198,7 @@ fn load_sprite_assets(
         effects_layout,
         melee_image: asset_server.load("sprites/melee/melee_weapons.png"),
         melee_layout,
+        cafeteria_bg: asset_server.load("sprites/map/cafeteria_bg.png"),
     });
 }
 

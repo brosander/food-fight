@@ -129,7 +129,7 @@ The core game loop is complete and playable.
 - [x] Elimination & lunch detention (corner tables, last player standing wins)
 - [x] Multi-round sessions with cumulative scoring (damage + detention slips)
 - [x] Steam Deck Gaming Mode support
-- [x] Sprite art for players, NPCs, food, launchers, effects, melee weapons, UI
+- [x] Sprite art for players, NPCs, food, launchers, effects, melee weapons, UI, cafeteria background
 - [x] Melee weapon animations: ground sparkle, equipped overlay on player, baguette 3-frame swing, lunch tray parry flash + block pulse
 - [x] Audio
 - [ ] Additional maps
