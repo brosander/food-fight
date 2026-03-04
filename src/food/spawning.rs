@@ -23,8 +23,10 @@ const SPAWN_POSITIONS: &[(f32, f32)] = &[
     (350.0, 0.0),
 ];
 
-/// Creates food spawn point markers on entering the Playing state.
-pub fn setup_food_spawns(mut commands: Commands) {
+/// Creates food spawn point markers and spawns initial food on entering the Playing state.
+pub fn setup_food_spawns(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
+    let mut rng = rand::thread_rng();
+
     for &(x, y) in SPAWN_POSITIONS {
         commands.spawn((
             Sprite {
@@ -35,24 +37,69 @@ pub fn setup_food_spawns(mut commands: Commands) {
             Transform::from_xyz(x, y, 0.0),
             FoodSpawnPoint {
                 respawn_timer: Timer::from_seconds(5.0, TimerMode::Once),
-                active: false,
+                active: true,
             },
+            Gameplay,
+        ));
+
+        let food_type = FoodType::ALL[rng.gen_range(0..FoodType::ALL.len())];
+        let stats = food_type.stats();
+        let row = food_type_row(&food_type);
+        let ground_index = food_atlas_index(row, 0);
+
+        commands.spawn((
+            Sprite {
+                image: sprite_assets.food_image.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: sprite_assets.food_layout.clone(),
+                    index: ground_index,
+                }),
+                custom_size: Some(stats.size),
+                ..default()
+            },
+            Transform::from_xyz(x, y, 0.5),
+            Throwable,
+            FoodItem {
+                food_type,
+                damage: stats.damage,
+            },
+            AnimationState::new(
+                "ground",
+                FrameRange {
+                    start: food_atlas_index(row, 0),
+                    end: food_atlas_index(row, 1),
+                    fps: 3.0,
+                    looping: true,
+                },
+            ),
             Gameplay,
         ));
     }
 }
 
-/// Spawns food at spawn points when their timer expires.
+/// Manages food spawn points: resets timer when food is picked up, respawns when timer expires.
 pub fn food_respawn_system(
     mut commands: Commands,
     time: Res<Time>,
     mut spawn_points: Query<(&Transform, &mut FoodSpawnPoint)>,
+    throwable_food: Query<&Transform, With<Throwable>>,
     sprite_assets: Res<SpriteAssets>,
 ) {
     let mut rng = rand::thread_rng();
 
     for (transform, mut spawn_point) in &mut spawn_points {
         if spawn_point.active {
+            let has_food = throwable_food.iter().any(|food_tf| {
+                food_tf
+                    .translation
+                    .truncate()
+                    .distance(transform.translation.truncate())
+                    < 10.0
+            });
+            if !has_food {
+                spawn_point.active = false;
+                spawn_point.respawn_timer.reset();
+            }
             continue;
         }
 
@@ -96,32 +143,6 @@ pub fn food_respawn_system(
             ));
 
             spawn_point.active = true;
-        }
-    }
-}
-
-/// When food is picked up near a spawn point, reset that spawn point's timer.
-pub fn reset_spawn_point_system(
-    throwable_food: Query<&Transform, With<Throwable>>,
-    mut spawn_points: Query<(&Transform, &mut FoodSpawnPoint)>,
-) {
-    for (sp_transform, mut spawn_point) in &mut spawn_points {
-        if !spawn_point.active {
-            continue;
-        }
-
-        // Check if the food near this spawn point still exists
-        let has_food = throwable_food.iter().any(|food_tf| {
-            food_tf
-                .translation
-                .truncate()
-                .distance(sp_transform.translation.truncate())
-                < 10.0
-        });
-
-        if !has_food {
-            spawn_point.active = false;
-            spawn_point.respawn_timer.reset();
         }
     }
 }
@@ -173,17 +194,28 @@ pub fn setup_melee_spawns(mut commands: Commands, sprite_assets: Res<SpriteAsset
     }
 }
 
-/// Respawns a melee weapon at each spawn point when the timer expires.
+/// Manages melee spawn points: resets timer when pickup is taken, respawns when timer expires.
 pub fn melee_respawn_system(
     mut commands: Commands,
     time: Res<Time>,
     sprite_assets: Res<SpriteAssets>,
     mut spawn_points: Query<(&Transform, &mut MeleeWeaponSpawnPoint)>,
+    pickups: Query<&Transform, With<MeleeWeaponPickup>>,
 ) {
     let mut rng = rand::thread_rng();
 
     for (transform, mut sp) in &mut spawn_points {
         if sp.active {
+            let has_pickup = pickups.iter().any(|tf| {
+                tf.translation
+                    .truncate()
+                    .distance(transform.translation.truncate())
+                    < 10.0
+            });
+            if !has_pickup {
+                sp.active = false;
+                sp.respawn_timer.reset();
+            }
             continue;
         }
 
@@ -226,68 +258,3 @@ pub fn melee_respawn_system(
         sp.active = true;
     }
 }
-
-/// Resets the melee spawn point timer when the pickup is gone.
-pub fn reset_melee_spawn_point_system(
-    pickups: Query<&Transform, With<MeleeWeaponPickup>>,
-    mut spawn_points: Query<(&Transform, &mut MeleeWeaponSpawnPoint)>,
-) {
-    for (sp_tf, mut sp) in &mut spawn_points {
-        if !sp.active {
-            continue;
-        }
-
-        let has_pickup = pickups.iter().any(|tf| {
-            tf.translation
-                .truncate()
-                .distance(sp_tf.translation.truncate())
-                < 10.0
-        });
-
-        if !has_pickup {
-            sp.active = false;
-            sp.respawn_timer.reset();
-        }
-    }
-}
-
-/// Initial spawn: immediately spawn food at all points on game start.
-pub fn initial_food_spawn(mut commands: Commands, sprite_assets: Res<SpriteAssets>) {
-    let mut rng = rand::thread_rng();
-
-    for &(x, y) in SPAWN_POSITIONS {
-        let food_type = FoodType::ALL[rng.gen_range(0..FoodType::ALL.len())];
-        let stats = food_type.stats();
-        let row = food_type_row(&food_type);
-        let ground_index = food_atlas_index(row, 0);
-
-        commands.spawn((
-            Sprite {
-                image: sprite_assets.food_image.clone(),
-                texture_atlas: Some(TextureAtlas {
-                    layout: sprite_assets.food_layout.clone(),
-                    index: ground_index,
-                }),
-                custom_size: Some(stats.size),
-                ..default()
-            },
-            Transform::from_xyz(x, y, 0.5),
-            Throwable,
-            FoodItem {
-                food_type,
-                damage: stats.damage,
-            },
-            AnimationState::new(
-                "ground",
-                FrameRange {
-                    start: food_atlas_index(row, 0),
-                    end: food_atlas_index(row, 1),
-                    fps: 3.0,
-                    looping: true,
-                },
-            ),
-            Gameplay,
-        ));
-    }
-}
-
